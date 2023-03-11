@@ -1,23 +1,84 @@
 #include "graph.h"
 
+#include <fstream>
 #include <iostream>
 #include <queue>
+#include <sstream>
 
 namespace olsp {
 
 Graph::Graph(const std::string& path, ReadMode read_mode) {
     readGraph(path, m_graph, read_mode);
     createReverseGraph(m_graph, m_reverse_graph);
+    m_num_nodes = m_graph.size();
 }
 
-Graph::Graph(std::vector<std::vector<Edge>> graph) : m_graph(graph) { createReverseGraph(m_graph, m_reverse_graph); }
+Graph::Graph(std::vector<std::vector<Edge>> graph) : m_graph(graph) {
+    createReverseGraph(m_graph, m_reverse_graph);
+    m_num_nodes = m_graph.size();
+}
 
 void Graph::readGraph(const std::string& path, std::vector<std::vector<Edge>>& graph, ReadMode read_mode) {
-    // TODO:
+    std::cout << "Started reading graph file." << std::endl;
+
+    auto begin = std::chrono::high_resolution_clock::now();
+
+    std::ifstream infile(path);
+    std::string line = "#";
+
+    // skip the metadata which begins with #
+    while (line[0] == '#') getline(infile, line);
+
+    getline(infile, line);
+    int num_nodes = std::stoi(line);
+    getline(infile, line);
+    int num_edges = std::stoi(line);
+
+    // skip all node information
+    for (int i = 0; i < num_nodes; ++i) getline(infile, line);
+
+    graph.clear();
+    graph.resize(num_nodes);
+
+    // read edge information
+    for (int i = 0; i < num_edges; ++i) {
+        getline(infile, line);
+        std::stringstream ss(line);
+
+        std::string s;
+        getline(ss, s, ' ');
+        int src = std::stoi(s);
+        getline(ss, s, ' ');
+        int target = std::stoi(s);
+        getline(ss, s, ' ');
+        int cost = std::stoi(s);
+
+        if (read_mode == ReadMode::NORMAL) {
+            graph[src].push_back(Edge{target, cost});
+        } else {
+            // skip unused fields
+            getline(ss, s, ' ');
+            getline(ss, s, ' ');
+
+            getline(ss, s, ' ');
+            int child_1 = std::stoi(s);
+            getline(ss, s, ' ');
+            int child_2 = std::stoi(s);
+            graph[src].push_back(Edge{target, cost, child_1, child_2});
+        }
+    }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin);
+    std::cout << "Finished reading graph file. Took " << elapsed.count() << " milliseconds " << std::endl;
 }
 
 void Graph::createReverseGraph(const std::vector<std::vector<Edge>>& graph,
                                std::vector<std::vector<Edge>>& reverse_graph) {
+    std::cout << "Started creating reverse graph." << std::endl;
+
+    auto begin = std::chrono::high_resolution_clock::now();
+
     if (graph.empty()) {
         std::cout << "Can't create reverse graph, because graph is empty" << std::endl;
         return;
@@ -39,6 +100,10 @@ void Graph::createReverseGraph(const std::vector<std::vector<Edge>>& graph,
             reverse_graph[new_source].push_back(e);
         }
     }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin);
+    std::cout << "Finished creating reverse graph. Took " << elapsed.count() << " milliseconds " << std::endl;
 }
 
 void Graph::bidirectionalDijkstraCalculateDistance(BiDirectionalDijkstraData& data) {
@@ -46,6 +111,10 @@ void Graph::bidirectionalDijkstraCalculateDistance(BiDirectionalDijkstraData& da
         std::cout << "Invalid start or end nodes!" << std::endl;
         return;
     }
+
+    std::cout << "Started bidirectional Dijkstra run." << std::endl;
+
+    auto begin = std::chrono::high_resolution_clock::now();
 
     // reset data for bidirectional dijkstra
     data.m_fwd_prev.clear();
@@ -115,7 +184,13 @@ void Graph::bidirectionalDijkstraCalculateDistance(BiDirectionalDijkstraData& da
         }
 
         // termination condition
-        if (distances_fwd[fwd_node.second] + distances_bwd[bwd_node.second] >= data.m_distance) return;
+        if (distances_fwd[fwd_node.second] + distances_bwd[bwd_node.second] >= data.m_distance) {
+            auto end = std::chrono::high_resolution_clock::now();
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin);
+            std::cout << "Finished bidirectional Dijkstra run. Took " << elapsed.count() << " milliseconds "
+                      << std::endl;
+            return;
+        }
     }
 }
 

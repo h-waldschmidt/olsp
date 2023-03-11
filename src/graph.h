@@ -27,13 +27,13 @@ struct BiDirectionalDijkstraData {
     std::vector<int> m_bwd_prev;  // bwd = backward
     std::vector<int> m_shortest_path;
 
-    BiDirectionalDijkstraData(int start, int end, int num_nodes)
+    BiDirectionalDijkstraData(int start, int end)
         : m_start(start),
           m_end(end),
           m_meeting_node(-1),
           m_distance(std::numeric_limits<int>::max()),
-          m_fwd_prev(num_nodes, -1),
-          m_bwd_prev(num_nodes, -1),
+          m_fwd_prev(0),
+          m_bwd_prev(0),
           m_shortest_path(0) {}
 };
 
