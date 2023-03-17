@@ -107,7 +107,7 @@ void Graph::createReverseGraph(const std::vector<std::vector<Edge>>& graph,
     std::cout << "Finished creating reverse graph. Took " << elapsed.count() << " milliseconds " << std::endl;
 }
 
-void Graph::bidirectionalDijkstraCalculateDistance(BiDirectionalDijkstraData& data) {
+void Graph::bidirectionalDijkstraCalculateDistance(QueryData& data) {
     if (data.m_start < 0 || data.m_end < 0) {
         std::cout << "Invalid start or end nodes!" << std::endl;
         return;
@@ -120,8 +120,12 @@ void Graph::bidirectionalDijkstraCalculateDistance(BiDirectionalDijkstraData& da
     // reset data for bidirectional dijkstra
     data.m_fwd_prev.clear();
     data.m_bwd_prev.clear();
-    data.m_fwd_prev.resize(m_num_nodes, -1);
-    data.m_bwd_prev.resize(m_num_nodes, -1);
+
+    if (data.m_path_needed) {
+        data.m_fwd_prev.resize(m_num_nodes, -1);
+        data.m_bwd_prev.resize(m_num_nodes, -1);
+    }
+
     data.m_distance = std::numeric_limits<int>::max();
     data.m_meeting_node = -1;
 
@@ -158,7 +162,8 @@ void Graph::bidirectionalDijkstraCalculateDistance(BiDirectionalDijkstraData& da
             if (!visited_fwd[e.m_target] && distances_fwd[e.m_target] > distances_fwd[fwd_node.second] + e.m_cost) {
                 distances_fwd[e.m_target] = distances_fwd[fwd_node.second] + e.m_cost;
                 fwd_pq.push(std::make_pair(distances_fwd[e.m_target], e.m_target));
-                data.m_fwd_prev[e.m_target] = fwd_node.second;
+
+                if (data.m_path_needed) data.m_fwd_prev[e.m_target] = fwd_node.second;
             }
 
             if (visited_bwd[e.m_target] &&
@@ -174,7 +179,8 @@ void Graph::bidirectionalDijkstraCalculateDistance(BiDirectionalDijkstraData& da
             if (!visited_bwd[e.m_target] && distances_bwd[e.m_target] > distances_bwd[bwd_node.second] + e.m_cost) {
                 distances_bwd[e.m_target] = distances_bwd[bwd_node.second] + e.m_cost;
                 bwd_pq.push(std::make_pair(distances_bwd[e.m_target], e.m_target));
-                data.m_bwd_prev[e.m_target] = bwd_node.second;
+
+                if (data.m_path_needed) data.m_bwd_prev[e.m_target] = bwd_node.second;
             }
 
             if (visited_fwd[e.m_target] &&
@@ -195,8 +201,8 @@ void Graph::bidirectionalDijkstraCalculateDistance(BiDirectionalDijkstraData& da
     }
 }
 
-void Graph::bidirectionalDijkstraGetPath(BiDirectionalDijkstraData& data) {
-    if (!(data.m_distance < std::numeric_limits<int>::max() || data.m_distance > -1)) {
+void Graph::bidirectionalDijkstraGetPath(QueryData& data) {
+    if (!(data.m_distance < std::numeric_limits<int>::max() || data.m_distance > -1) || !data.m_path_needed) {
         std::cout << "Can't return path for invalid data!" << std::endl;
         return;
     }

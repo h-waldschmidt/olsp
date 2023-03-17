@@ -18,20 +18,22 @@ struct Edge {
     bool isShortcut() { return (m_child_1 != -1) && (m_child_2 != -1); }
 };
 
-struct BiDirectionalDijkstraData {
+struct QueryData {
     int m_start;
     int m_end;
     int m_meeting_node;
     int m_distance;
+    bool m_path_needed;
     std::vector<int> m_fwd_prev;  // fwd = forward
     std::vector<int> m_bwd_prev;  // bwd = backward
     std::vector<int> m_shortest_path;
 
-    BiDirectionalDijkstraData(int start, int end)
+    QueryData(int start, int end, bool path_needed)
         : m_start(start),
           m_end(end),
           m_meeting_node(-1),
           m_distance(std::numeric_limits<int>::max()),
+          m_path_needed(path_needed),
           m_fwd_prev(0),
           m_bwd_prev(0),
           m_shortest_path(0) {}
@@ -50,9 +52,9 @@ class Graph {
     static void createReverseGraph(const std::vector<std::vector<Edge>>& graph,
                                    std::vector<std::vector<Edge>>& reverse_graph);
 
-    void bidirectionalDijkstraCalculateDistance(BiDirectionalDijkstraData& data);
+    void bidirectionalDijkstraCalculateDistance(QueryData& data);
 
-    void bidirectionalDijkstraGetPath(BiDirectionalDijkstraData& data);
+    void bidirectionalDijkstraGetPath(QueryData& data);
 
    private:
     int m_num_nodes;
