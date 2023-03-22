@@ -23,7 +23,7 @@ struct QueryData {
     int m_end;
     int m_meeting_node;
     int m_distance;
-    bool m_path_needed;
+    bool m_path_needed;           // when the path is not needed the path related variables don't need to be filled`
     std::vector<int> m_fwd_prev;  // fwd = forward
     std::vector<int> m_bwd_prev;  // bwd = backward
     std::vector<int> m_shortest_path;
@@ -39,27 +39,48 @@ struct QueryData {
           m_shortest_path(0) {}
 };
 
-enum ReadMode { NORMAL = 0, CONTRACTION_HIERACHIES = 1 };
+enum ReadMode { NORMAL = 0, CONTRACTION_HIERARCHY = 1 };
 
 class Graph {
    public:
-    Graph(const std::string& path, ReadMode read_mode);
-    Graph(std::vector<std::vector<Edge>> graph);
+    Graph(const std::string& path, ReadMode read_mode, bool ch_available);
+    Graph(std::vector<std::vector<Edge>> graph);  // TODO: Adjust constructors for normal mode and ch mode
     ~Graph() = default;
 
-    static void readGraph(const std::string& path, std::vector<std::vector<Edge>>& graph, ReadMode read_mode);
+    void readGraph(const std::string& path, ReadMode read_mode);
 
-    static void createReverseGraph(const std::vector<std::vector<Edge>>& graph,
-                                   std::vector<std::vector<Edge>>& reverse_graph);
+    void createReverseGraph();
 
-    void bidirectionalDijkstraCalculateDistance(QueryData& data);
+    static int dijkstraQuery(std::vector<std::vector<Edge>>& graph, int start, int end);
+
+    void bidirectionalDijkstraQuery(QueryData& data);
 
     void bidirectionalDijkstraGetPath(QueryData& data);
 
+    void contractionHierachyQuery(QueryData& data);  // TODO:
+
+    void createHubLabels();  // TODO:
+
+    void hubLabelQuery(QueryData& data);
+
+    double averageLabelSize();
+
+    int maxLabelSize();
+
+    std::vector<std::vector<Edge>>& getGraphVec() { return m_graph; }
+
    private:
+    bool m_ch_available;  // ch = Contraction Hierarchy
     int m_num_nodes;
     std::vector<std::vector<Edge>> m_graph;
     std::vector<std::vector<Edge>> m_reverse_graph;
+    std::vector<int> m_node_level;
+    std::vector<std::vector<std::pair<int, int>>> m_fwd_hub_labels;
+    std::vector<std::vector<std::pair<int, int>>> m_bwd_hub_labels;
+
+    void createReverseGraphCH();
+    void createReverseGraphNormal();
+    void createCH();
 };
 
 }  // namespace olsp
