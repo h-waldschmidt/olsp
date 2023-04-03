@@ -57,15 +57,17 @@ class Graph {
 
     void bidirectionalDijkstraGetPath(QueryData& data);
 
-    void contractionHierachyQuery(QueryData& data);  // TODO:
+    void contractionHierachyQuery(QueryData& data);
 
-    void createHubLabels();  // TODO:
+    void createHubLabels();
 
     void hubLabelQuery(QueryData& data);
 
     double averageLabelSize();
 
     int maxLabelSize();
+
+    std::vector<int> createShortestPathCover(int threshold);
 
     std::vector<std::vector<Edge>>& getGraphVec() { return m_graph; }
 
@@ -81,6 +83,8 @@ class Graph {
     void createReverseGraphCH();
     void createReverseGraphNormal();
     void createCH();
+    int simplifiedHubLabelQuery(std::vector<std::pair<int, int>>& fwd_labels,
+                                std::vector<std::pair<int, int>>& bwd_labels);
 };
 
 }  // namespace olsp
