@@ -683,6 +683,9 @@ void Graph::createCH() {
         contractNode(contracted, contracted_node.second);
         m_node_level[contracted_node.second] = num_contracted;
         ++num_contracted;
+
+        // std::cout << "Finished contracting: " << num_contracted << "\n";
+        // if (num_contracted == 10000) break;
     }
 
     auto end = std::chrono::high_resolution_clock::now();
@@ -704,10 +707,57 @@ int Graph::inOutProductHeuristic(std::vector<bool>& contracted, int node) {
     return num_outgoing * num_incomming;
 }
 
+int Graph::edgeDifferenceHeuristic(std::vector<bool>& contracted, int node) {
+    int num_edges_deleted = 0;
+    for (auto& outgoing : m_graph[node]) {
+        if (!contracted[outgoing.m_target]) ++num_edges_deleted;
+    }
+
+    for (auto& incoming : m_reverse_graph[node]) {
+        if (!contracted[incoming.m_target]) ++num_edges_deleted;
+    }
+
+    int num_added_shortcuts = 0;
+    // mark outgoing nodes
+    // will be used for pruning in contractionDijkstra
+    std::vector<bool> outgoing_nodes(m_num_nodes, false);
+    int num_outgoing = 0;
+    for (auto& outgoing : m_graph[node]) {
+        if (contracted[outgoing.m_target]) continue;
+
+        ++num_outgoing;
+        outgoing_nodes[outgoing.m_target] = true;
+    }
+
+    for (auto& incoming : m_reverse_graph[node]) {
+        if (contracted[incoming.m_target]) continue;
+        int max_distance = -1;
+        for (auto& outgoing : m_graph[node]) {
+            if (contracted[outgoing.m_target]) continue;
+            if (incoming.m_cost + outgoing.m_cost > max_distance) max_distance = incoming.m_cost + outgoing.m_cost;
+        }
+
+        std::vector<int> distances(m_num_nodes, std::numeric_limits<int>::max());
+        std::vector<bool> visited(m_num_nodes, false);
+        contractionDijkstra(distances, incoming.m_target, node, contracted, outgoing_nodes, num_outgoing, max_distance);
+
+        for (auto& outgoing : m_graph[node]) {
+            if (visited[outgoing.m_target]) continue;
+            if (contracted[outgoing.m_target]) continue;
+            if (distances[outgoing.m_target] < incoming.m_cost + outgoing.m_cost) continue;
+            if (outgoing.m_target == incoming.m_target) continue;
+
+            visited[outgoing.m_target] = true;
+            ++num_added_shortcuts;
+        }
+    }
+    return num_added_shortcuts - num_edges_deleted;
+}
+
 void Graph::contractNode(std::vector<bool>& contracted, int contracted_node) {
     // mark outgoing nodes
     // will be used for pruning in contractionDijkstra
-    std::vector<bool> outgoing_nodes(m_num_nodes);
+    std::vector<bool> outgoing_nodes(m_num_nodes, false);
     int num_outgoing = 0;
     for (auto& outgoing : m_graph[contracted_node]) {
         if (contracted[outgoing.m_target]) continue;
@@ -716,7 +766,6 @@ void Graph::contractNode(std::vector<bool>& contracted, int contracted_node) {
         outgoing_nodes[outgoing.m_target] = true;
     }
 
-    std::vector<int> distances(m_num_nodes);
     std::vector<std::pair<int, Edge>> fwd_shortcuts;
     std::vector<std::pair<int, Edge>> bwd_shortcuts;
 
@@ -728,10 +777,11 @@ void Graph::contractNode(std::vector<bool>& contracted, int contracted_node) {
             if (incoming.m_cost + outgoing.m_cost > max_distance) max_distance = incoming.m_cost + outgoing.m_cost;
         }
 
+        std::vector<int> distances(m_num_nodes, std::numeric_limits<int>::max());
+        std::vector<bool> visited(m_num_nodes, false);
         contractionDijkstra(distances, incoming.m_target, contracted_node, contracted, outgoing_nodes, num_outgoing,
                             max_distance);
 
-        std::vector<bool> visited(m_num_nodes, false);
         for (auto& outgoing : m_graph[contracted_node]) {
             if (visited[outgoing.m_target]) continue;
             if (contracted[outgoing.m_target]) continue;
@@ -755,7 +805,6 @@ void Graph::contractNode(std::vector<bool>& contracted, int contracted_node) {
 void Graph::contractionDijkstra(std::vector<int>& distances, int start, int contracted_node,
                                 std::vector<bool>& contracted, std::vector<bool>& outgoing_nodes, int num_outgoing,
                                 int max_distance) {
-    std::fill(distances.begin(), distances.end(), std::numeric_limits<int>::max());
     std::vector<bool> visited(m_num_nodes, false);
     std::priority_queue<std::pair<int, int>, std::vector<std::pair<int, int>>, std::greater<std::pair<int, int>>> pq;
 

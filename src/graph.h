@@ -88,6 +88,8 @@ class Graph {
 
     int inOutProductHeuristic(std::vector<bool>& contracted, int node);
 
+    int edgeDifferenceHeuristic(std::vector<bool>& contracted, int node);
+
     void contractNode(std::vector<bool>& contracted, int contracted_node);
 
     void contractionDijkstra(std::vector<int>& distances, int start, int contracted_node, std::vector<bool>& contracted,
