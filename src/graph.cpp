@@ -442,8 +442,6 @@ void Graph::createHubLabels() {
         auto& fwd_labels = m_fwd_hub_labels[node];
 
         // remove duplicates
-        //
-        // TODO: Test this
         std::sort(m_fwd_hub_labels[node].begin(), m_fwd_hub_labels[node].end(),
                   [](auto& left, auto& right) { return left.first < right.first; });
         for (auto iter = m_fwd_hub_labels[node].begin(); iter != m_fwd_hub_labels[node].end();) {
@@ -651,16 +649,136 @@ void Graph::createCH() {
         std::cout << "Can't create CH, because graph is empty." << std::endl;
         return;
     }
-    /*
-        auto graph = m_graph;
-        while(graph.size() != 0){
-            std::vector<int> edge_diff(graph.size());
-            for(int i = 0)
+    m_node_level.clear();
+    m_node_level.resize(m_num_nodes);
+
+    // reverse graph needed to find incoming edges
+    m_ch_available = false;
+    createReverseGraph();
+    m_ch_available = true;
+
+    std::vector<bool> contracted(m_num_nodes, false);
+    int num_contracted = 0;
+
+    // initialize importance for all nodes
+    std::priority_queue<std::pair<int, int>, std::vector<std::pair<int, int>>, std::greater<std::pair<int, int>>>
+        importance_pq;
+    for (int i = 0; i < m_num_nodes; ++i) {
+        int importance = inOutProductHeuristic(contracted, i);
+        importance_pq.emplace(std::make_pair(importance, i));
+    }
+
+    while (num_contracted != m_num_nodes) {
+        auto contracted_node = importance_pq.top();
+        importance_pq.pop();
+        int new_importance = inOutProductHeuristic(contracted, contracted_node.second);
+        while (new_importance > importance_pq.top().first) {
+            importance_pq.emplace(std::make_pair(new_importance, contracted_node.second));
+            contracted_node = importance_pq.top();
+            importance_pq.pop();
+            new_importance = inOutProductHeuristic(contracted, contracted_node.second);
         }
-    */
+
+        contracted[contracted_node.second] = true;
+        contractNode(contracted, contracted_node.second);
+        m_node_level[contracted_node.second] = num_contracted;
+        ++num_contracted;
+    }
+
     auto end = std::chrono::high_resolution_clock::now();
-    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin);
-    std::cout << "Finished creating CH. Took " << elapsed.count() << " milliseconds " << std::endl;
+    auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(end - begin);
+    std::cout << "Finished creating CH. Took " << elapsed.count() << " seconds" << std::endl;
+}
+
+int Graph::inOutProductHeuristic(std::vector<bool>& contracted, int node) {
+    int num_outgoing = 0;
+    int num_incomming = 0;
+
+    for (auto& outgoing : m_graph[node]) {
+        if (!contracted[outgoing.m_target]) ++num_outgoing;
+    }
+
+    for (auto& incoming : m_reverse_graph[node]) {
+        if (!contracted[incoming.m_target]) ++num_incomming;
+    }
+    return num_outgoing * num_incomming;
+}
+
+void Graph::contractNode(std::vector<bool>& contracted, int contracted_node) {
+    // mark outgoing nodes
+    // will be used for pruning in contractionDijkstra
+    std::vector<bool> outgoing_nodes(m_num_nodes);
+    int num_outgoing = 0;
+    for (auto& outgoing : m_graph[contracted_node]) {
+        if (contracted[outgoing.m_target]) continue;
+
+        ++num_outgoing;
+        outgoing_nodes[outgoing.m_target] = true;
+    }
+
+    std::vector<int> distances(m_num_nodes);
+    std::vector<std::pair<int, Edge>> fwd_shortcuts;
+    std::vector<std::pair<int, Edge>> bwd_shortcuts;
+
+    for (auto& incoming : m_reverse_graph[contracted_node]) {
+        if (contracted[incoming.m_target]) continue;
+        int max_distance = -1;
+        for (auto& outgoing : m_graph[contracted_node]) {
+            if (contracted[outgoing.m_target]) continue;
+            if (incoming.m_cost + outgoing.m_cost > max_distance) max_distance = incoming.m_cost + outgoing.m_cost;
+        }
+
+        contractionDijkstra(distances, incoming.m_target, contracted_node, contracted, outgoing_nodes, num_outgoing,
+                            max_distance);
+
+        std::vector<bool> visited(m_num_nodes, false);
+        for (auto& outgoing : m_graph[contracted_node]) {
+            if (visited[outgoing.m_target]) continue;
+            if (contracted[outgoing.m_target]) continue;
+            if (distances[outgoing.m_target] < incoming.m_cost + outgoing.m_cost) continue;
+            if (outgoing.m_target == incoming.m_target) continue;
+
+            visited[outgoing.m_target] = true;
+            // add shortcut
+            // TODO: what to put into child 1 and child 2
+            Edge fwd_shortcut(outgoing.m_target, incoming.m_cost + outgoing.m_cost);
+            fwd_shortcuts.push_back(std::make_pair(incoming.m_target, fwd_shortcut));
+            Edge bwd_shortcut(incoming.m_target, incoming.m_cost + outgoing.m_cost);
+            bwd_shortcuts.push_back(std::make_pair(outgoing.m_target, bwd_shortcut));
+        }
+    }
+
+    for (auto& fwd_shortcut : fwd_shortcuts) m_graph[fwd_shortcut.first].push_back(fwd_shortcut.second);
+    for (auto& bwd_shortcut : bwd_shortcuts) m_reverse_graph[bwd_shortcut.first].push_back(bwd_shortcut.second);
+}
+
+void Graph::contractionDijkstra(std::vector<int>& distances, int start, int contracted_node,
+                                std::vector<bool>& contracted, std::vector<bool>& outgoing_nodes, int num_outgoing,
+                                int max_distance) {
+    std::fill(distances.begin(), distances.end(), std::numeric_limits<int>::max());
+    std::vector<bool> visited(m_num_nodes, false);
+    std::priority_queue<std::pair<int, int>, std::vector<std::pair<int, int>>, std::greater<std::pair<int, int>>> pq;
+
+    int num_visited_outgoing = 0;
+    distances[start] = 0;
+    pq.push(std::make_pair(0, start));
+
+    while (!pq.empty()) {
+        std::pair<int, int> cur_node = pq.top();
+        pq.pop();
+        visited[cur_node.second] = true;
+
+        if (outgoing_nodes[cur_node.second]) ++num_visited_outgoing;
+        if (cur_node.first > max_distance || num_visited_outgoing == num_outgoing) break;
+
+        for (Edge& e : m_graph[cur_node.second]) {
+            if (contracted[e.m_target]) continue;
+            if (!visited[e.m_target] && distances[e.m_target] > distances[cur_node.second] + e.m_cost) {
+                distances[e.m_target] = distances[cur_node.second] + e.m_cost;
+                pq.push(std::make_pair(distances[e.m_target], e.m_target));
+            }
+        }
+    }
 }
 
 int Graph::simplifiedHubLabelQuery(std::vector<std::pair<int, int>>& fwd_labels,

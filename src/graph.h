@@ -81,8 +81,18 @@ class Graph {
     std::vector<std::vector<std::pair<int, int>>> m_bwd_hub_labels;
 
     void createReverseGraphCH();
+
     void createReverseGraphNormal();
+
     void createCH();
+
+    int inOutProductHeuristic(std::vector<bool>& contracted, int node);
+
+    void contractNode(std::vector<bool>& contracted, int contracted_node);
+
+    void contractionDijkstra(std::vector<int>& distances, int start, int contracted_node, std::vector<bool>& contracted,
+                             std::vector<bool>& outgoing_nodes, int num_outgoing, int max_distance);
+
     int simplifiedHubLabelQuery(std::vector<std::pair<int, int>>& fwd_labels,
                                 std::vector<std::pair<int, int>>& bwd_labels);
 };

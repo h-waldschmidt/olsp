@@ -6,11 +6,11 @@ int main(int argc, char *argv[]) {
     // olsp::Graph g("/Users/helmut/Documents/BachelorArbeit/bachelorarbeit/data/stgtregbz_ch.fmi",
     // olsp::ReadMode::CONTRACTION_HIERACHIES);
 
-    olsp::Graph g("/home/helmut/Documents/BachelorArbeit/bachelorarbeit/data/stgtregbz_ch.fmi",
-                  olsp::ReadMode::CONTRACTION_HIERARCHY, true);
+    olsp::Graph g("/home/helmut/Documents/BachelorArbeit/bachelorarbeit/data/stgtregbz.fmi", olsp::ReadMode::NORMAL,
+                  true);
 
-    int dist = olsp::Graph::dijkstraQuery(g.getGraphVec(), 377371, 754742);
-    std::cout << "Distance: " << dist << std::endl;
+    // int dist = olsp::Graph::dijkstraQuery(g.getGraphVec(), 377371, 754742);
+    // std::cout << "Distance: " << dist << std::endl;
 
     olsp::QueryData bd_data(377371, 754742, false);
 
@@ -19,12 +19,12 @@ int main(int argc, char *argv[]) {
     std::vector<int> path = bd_data.m_shortest_path;
     int meeting_node = bd_data.m_meeting_node;
     std::cout << meeting_node << std::endl;
-    g.bidirectionalDijkstraGetPath(bd_data);
+    // g.bidirectionalDijkstraGetPath(bd_data);
 
     g.contractionHierachyQuery(bd_data);
     std::cout << "Distance: " << bd_data.m_distance << std::endl;
     std::cout << bd_data.m_meeting_node << std::endl;
-    g.bidirectionalDijkstraGetPath(bd_data);
+    // g.bidirectionalDijkstraGetPath(bd_data);
 
     g.createHubLabels();
     g.hubLabelQuery(bd_data);
@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
     std::cout << "Average Label size: " << g.averageLabelSize() << std::endl;
     std::cout << "Max Label size: " << g.maxLabelSize() << std::endl;
 
-    auto path_cover = g.createShortestPathCover(131234);
-    std::cout << "Path Cover Size: " << path_cover.size() << std::endl;
+    // auto path_cover = g.createShortestPathCover(131234);
+    // std::cout << "Path Cover Size: " << path_cover.size() << std::endl;
     return 0;
 }
