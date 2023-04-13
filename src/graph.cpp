@@ -664,19 +664,19 @@ void Graph::createCH() {
     std::priority_queue<std::pair<int, int>, std::vector<std::pair<int, int>>, std::greater<std::pair<int, int>>>
         importance_pq;
     for (int i = 0; i < m_num_nodes; ++i) {
-        int importance = inOutProductHeuristic(contracted, i);
+        int importance = edgeDifferenceHeuristic(contracted, i);
         importance_pq.emplace(std::make_pair(importance, i));
     }
 
     while (num_contracted != m_num_nodes) {
         auto contracted_node = importance_pq.top();
         importance_pq.pop();
-        int new_importance = inOutProductHeuristic(contracted, contracted_node.second);
+        int new_importance = edgeDifferenceHeuristic(contracted, contracted_node.second);
         while (new_importance > importance_pq.top().first) {
             importance_pq.emplace(std::make_pair(new_importance, contracted_node.second));
             contracted_node = importance_pq.top();
             importance_pq.pop();
-            new_importance = inOutProductHeuristic(contracted, contracted_node.second);
+            new_importance = edgeDifferenceHeuristic(contracted, contracted_node.second);
         }
 
         contractNode(contracted, contracted_node.second);
@@ -717,9 +717,9 @@ int Graph::edgeDifferenceHeuristic(std::vector<bool>& contracted, int node) {
     }
 
     int num_added_shortcuts = 0;
+
     // mark outgoing nodes
     // will be used for pruning in contractionDijkstra
-    std::vector<bool> outgoing_nodes(m_num_nodes, false);
     int num_outgoing = 0;
     int max_distance_out = -1;
     for (auto& outgoing : m_graph[node]) {
@@ -727,28 +727,39 @@ int Graph::edgeDifferenceHeuristic(std::vector<bool>& contracted, int node) {
         if (outgoing.m_cost > max_distance_out) max_distance_out = outgoing.m_cost;
 
         ++num_outgoing;
-        outgoing_nodes[outgoing.m_target] = true;
+        m_contr_data.m_reset_outgoing.push_back(outgoing.m_target);
+        m_contr_data.m_outgoing[outgoing.m_target] = true;
     }
 
     for (auto& incoming : m_reverse_graph[node]) {
         if (contracted[incoming.m_target]) continue;
         int max_distance = incoming.m_cost + max_distance_out;
 
-        std::vector<int> distances(m_num_nodes, std::numeric_limits<int>::max());
-        std::vector<bool> visited(m_num_nodes, false);
-        std::vector<int> distances_changed;
         contractionDijkstra(incoming.m_target, node, contracted, num_outgoing, max_distance);
 
         for (auto& outgoing : m_graph[node]) {
-            if (visited[outgoing.m_target]) continue;
+            if (m_contr_data.m_visited[outgoing.m_target]) continue;
             if (contracted[outgoing.m_target]) continue;
-            if (distances[outgoing.m_target] < incoming.m_cost + outgoing.m_cost) continue;
+            if (m_contr_data.m_distances[outgoing.m_target] != incoming.m_cost + outgoing.m_cost) continue;
             if (outgoing.m_target == incoming.m_target) continue;
 
-            visited[outgoing.m_target] = true;
+            m_contr_data.m_visited[outgoing.m_target] = true;
+            m_contr_data.m_reset_visited.push_back(outgoing.m_target);
+
             ++num_added_shortcuts;
         }
+
+        // reset contraction data
+        for (int& num : m_contr_data.m_reset_visited) m_contr_data.m_visited[num] = false;
+        for (int& num : m_contr_data.m_reset_distances) m_contr_data.m_distances[num] = std::numeric_limits<int>::max();
+        m_contr_data.m_reset_visited.clear();
+        m_contr_data.m_reset_distances.clear();
     }
+
+    // reset contraction data
+    for (int& num : m_contr_data.m_reset_outgoing) m_contr_data.m_outgoing[num] = false;
+    m_contr_data.m_reset_outgoing.clear();
+
     return num_added_shortcuts - num_edges_deleted;
 }
 
