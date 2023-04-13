@@ -18,6 +18,20 @@ struct Edge {
     bool isShortcut() { return (m_child_1 != -1) && (m_child_2 != -1); }
 };
 
+struct ContractionData {
+    std::vector<bool> m_outgoing;
+    std::vector<int> m_reset_outgoing;
+    std::vector<bool> m_visited;
+    std::vector<int> m_reset_visited;
+    std::vector<int> m_distances;
+    std::vector<int> m_reset_distances;
+    ContractionData(int num_nodes)
+        : m_outgoing(num_nodes, false),
+          m_visited(num_nodes, false),
+          m_distances(num_nodes, std::numeric_limits<int>::max()) {}
+    ContractionData() {}
+};
+
 struct QueryData {
     int m_start;
     int m_end;
@@ -77,6 +91,7 @@ class Graph {
     std::vector<std::vector<Edge>> m_graph;
     std::vector<std::vector<Edge>> m_reverse_graph;
     std::vector<int> m_node_level;
+    ContractionData m_contr_data;
     std::vector<std::vector<std::pair<int, int>>> m_fwd_hub_labels;
     std::vector<std::vector<std::pair<int, int>>> m_bwd_hub_labels;
 
@@ -92,8 +107,7 @@ class Graph {
 
     void contractNode(std::vector<bool>& contracted, int contracted_node);
 
-    void contractionDijkstra(std::vector<int>& distances, int start, int contracted_node, std::vector<bool>& contracted,
-                             std::vector<bool>& outgoing_nodes, int num_outgoing, int max_distance);
+    void contractionDijkstra(int start, int contracted_node, std::vector<bool>&, int num_outgoing, int max_distance);
 
     int simplifiedHubLabelQuery(std::vector<std::pair<int, int>>& fwd_labels,
                                 std::vector<std::pair<int, int>>& bwd_labels);
