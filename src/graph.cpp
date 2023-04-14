@@ -463,8 +463,6 @@ void Graph::createHubLabels() {
                 m_fwd_hub_labels[node].push_back(std::make_pair(hub.first, hub.second + e.m_cost));
         }
 
-        auto& fwd_labels = m_fwd_hub_labels[node];
-
         // remove duplicates
         std::sort(m_fwd_hub_labels[node].begin(), m_fwd_hub_labels[node].end(),
                   [](auto& left, auto& right) { return left.first < right.first; });
@@ -500,7 +498,6 @@ void Graph::createHubLabels() {
                 m_bwd_hub_labels[node].push_back(std::make_pair(hub.first, hub.second + e.m_cost));
         }
 
-        auto& bwd_labels = m_bwd_hub_labels[node];
         // remove duplicates
         std::sort(m_bwd_hub_labels[node].begin(), m_bwd_hub_labels[node].end(),
                   [](auto& left, auto& right) { return left.first < right.first; });
@@ -544,12 +541,6 @@ void Graph::hubLabelQuery(QueryData& data) {
 
     auto begin = std::chrono::high_resolution_clock::now();
 
-    // Sorting can be skipped, since the labels are already sorted
-    // std::sort(m_fwd_hub_labels[data.m_start].begin(), m_fwd_hub_labels[data.m_start].end(),
-    //         [](auto& left, auto& right) { return left.first < right.first; });
-    // std::sort(m_bwd_hub_labels[data.m_end].begin(), m_bwd_hub_labels[data.m_end].end(),
-    //         [](auto& left, auto& right) { return left.first < right.first; });
-
     data.m_distance = std::numeric_limits<int>::max();
     data.m_meeting_node = -1;
     auto fwd_iter = m_fwd_hub_labels[data.m_start].begin();
@@ -561,7 +552,6 @@ void Graph::hubLabelQuery(QueryData& data) {
                 data.m_meeting_node = fwd_iter->first;
                 data.m_distance = fwd_iter->second + bwd_iter->second;
             }
-
             ++fwd_iter;
             ++bwd_iter;
         } else if (fwd_iter->first < bwd_iter->first) {
