@@ -7,7 +7,7 @@ int main(int argc, char *argv[]) {
     // olsp::ReadMode::CONTRACTION_HIERACHIES);
 
     olsp::Graph g("/home/helmut/Documents/BachelorArbeit/bachelorarbeit/data/stgtregbz.fmi", olsp::ReadMode::NORMAL,
-                  true);
+                  true, olsp::DistanceMode::DISTANCE_METERS);
 
     // int dist = olsp::Graph::dijkstraQuery(g.getGraphVec(), 377371, 754742);
     // std::cout << "Distance: " << dist << std::endl;
@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
     std::cout << "Average Label size: " << g.averageLabelSize() << std::endl;
     std::cout << "Max Label size: " << g.maxLabelSize() << std::endl;
 
-    // auto path_cover = g.createShortestPathCover(131234);
-    // std::cout << "Path Cover Size: " << path_cover.size() << std::endl;
+    auto path_cover = g.createShortestPathCover(40000);
+    std::cout << "Path Cover Size: " << path_cover.size() << std::endl;
     return 0;
 }

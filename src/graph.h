@@ -55,13 +55,16 @@ struct QueryData {
 
 enum ReadMode { NORMAL = 0, CONTRACTION_HIERARCHY = 1 };
 
+enum DistanceMode { TRAVEL_TIME = 0, DISTANCE_METERS = 1 };
+
 class Graph {
    public:
-    Graph(const std::string& path, ReadMode read_mode, bool ch_available);
+    Graph(const std::string& path, ReadMode read_mode, bool ch_available,
+          DistanceMode dist_mode = DistanceMode::TRAVEL_TIME);
     Graph(std::vector<std::vector<Edge>> graph);  // TODO: Adjust constructors for normal mode and ch mode
     ~Graph() = default;
 
-    void readGraph(const std::string& path, ReadMode read_mode);
+    void readGraph(const std::string& path, ReadMode read_mode, DistanceMode dist_mode);
 
     void createReverseGraph();
 
@@ -99,11 +102,15 @@ class Graph {
 
     void createReverseGraphNormal();
 
+    int greatCircleDistance(double lat_1, double lon_1, double lat_2, double lon_2);
+
     void createCH();
 
     int inOutProductHeuristic(std::vector<bool>& contracted, int node);
 
     int edgeDifferenceHeuristic(std::vector<bool>& contracted, int node);
+
+    int weightedCostHeuristic(std::vector<bool>& contracted, int node);
 
     void contractNode(std::vector<bool>& contracted, int contracted_node);
 

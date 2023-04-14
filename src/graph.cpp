@@ -9,10 +9,14 @@
 #include <sstream>
 #include <unordered_set>
 
+#define _USE_MATH_DEFINES
+#include <math.h>
+
 namespace olsp {
 
-Graph::Graph(const std::string& path, ReadMode read_mode, bool ch_available) : m_ch_available(ch_available) {
-    readGraph(path, read_mode);
+Graph::Graph(const std::string& path, ReadMode read_mode, bool ch_available, DistanceMode dist_mode)
+    : m_ch_available(ch_available) {
+    readGraph(path, read_mode, dist_mode);
     m_num_nodes = m_graph.size();
 
     if (read_mode == ReadMode::NORMAL && m_ch_available) {
@@ -27,7 +31,7 @@ Graph::Graph(std::vector<std::vector<Edge>> graph) : m_graph(graph) {
     m_num_nodes = m_graph.size();
 }
 
-void Graph::readGraph(const std::string& path, ReadMode read_mode) {
+void Graph::readGraph(const std::string& path, ReadMode read_mode, DistanceMode dist_mode) {
     std::cout << "Started reading graph file." << std::endl;
 
     auto begin = std::chrono::high_resolution_clock::now();
@@ -44,10 +48,14 @@ void Graph::readGraph(const std::string& path, ReadMode read_mode) {
     int num_edges = std::stoi(line);
 
     m_node_level.clear();
+    std::vector<std::pair<double, double>> node_coords;
 
     // save node rank if CH Mode, else skip the node information
-    if (read_mode == ReadMode::CONTRACTION_HIERARCHY) {
-        m_node_level.resize(num_nodes);
+    // or save coords if distances in meters are required
+    if (read_mode == ReadMode::CONTRACTION_HIERARCHY || dist_mode == DistanceMode::DISTANCE_METERS) {
+        if (read_mode == ReadMode::CONTRACTION_HIERARCHY) m_node_level.resize(num_nodes);
+        if (dist_mode == DistanceMode::DISTANCE_METERS) node_coords.resize(num_nodes);
+
         for (int i = 0; i < num_nodes; ++i) {
             getline(infile, line);
             std::stringstream ss(line);
@@ -56,12 +64,24 @@ void Graph::readGraph(const std::string& path, ReadMode read_mode) {
             // skip unused fields
             getline(ss, s, ' ');
             getline(ss, s, ' ');
-            getline(ss, s, ' ');
-            getline(ss, s, ' ');
-            getline(ss, s, ' ');
 
-            getline(ss, s, ' ');
-            m_node_level[i] = std::stoi(s);
+            if (dist_mode == DistanceMode::DISTANCE_METERS) {
+                std::pair<double, double> coords;
+                getline(ss, s, ' ');
+                coords.first = stod(s);
+                getline(ss, s, ' ');
+                coords.second = stod(s);
+                node_coords[i] = coords;
+            } else {
+                getline(ss, s, ' ');
+                getline(ss, s, ' ');
+            }
+
+            if (read_mode == ReadMode::CONTRACTION_HIERARCHY) {
+                getline(ss, s, ' ');
+                getline(ss, s, ' ');
+                m_node_level[i] = std::stoi(s);
+            }
         }
     } else {
         for (int i = 0; i < num_nodes; ++i) getline(infile, line);
@@ -82,6 +102,10 @@ void Graph::readGraph(const std::string& path, ReadMode read_mode) {
         int target = std::stoi(s);
         getline(ss, s, ' ');
         int cost = std::stoi(s);
+
+        if (dist_mode == DistanceMode::DISTANCE_METERS)
+            cost = greatCircleDistance(node_coords[src].first, node_coords[src].second, node_coords[target].first,
+                                       node_coords[target].second);
 
         if (read_mode == ReadMode::NORMAL) {
             m_graph[src].push_back(Edge{target, cost});
@@ -638,6 +662,23 @@ void Graph::createReverseGraphCH() {
     }
 }
 
+int Graph::greatCircleDistance(double lat_1, double lon_1, double lat_2, double lon_2) {
+    // degrees to radians
+    lat_1 *= (M_PI / 180.0);
+    lon_1 *= (M_PI / 180.0);
+    lat_2 *= (M_PI / 180.0);
+    lon_2 *= (M_PI / 180.0);
+
+    // Using Haversine Distance: https://en.wikipedia.org/wiki/Haversine_formula
+    // example in JS: https://github.com/njj/haversine/blob/develop/haversine.js
+    double d_lat = lat_2 - lat_1;
+    double d_lon = lon_2 - lon_1;
+    double a = pow(sin(d_lat / 2.0), 2) + pow(sin(d_lon / 2.0), 2) * cos(lat_1) * cos(lat_2);
+    double c = 2.0 * atan2(sqrt(a), sqrt(1 - a));
+
+    return 6371000 * c;  // return in meters
+}
+
 void Graph::createCH() {
     std::cout << "Started creating CH." << std::endl;
 
@@ -664,19 +705,19 @@ void Graph::createCH() {
     std::priority_queue<std::pair<int, int>, std::vector<std::pair<int, int>>, std::greater<std::pair<int, int>>>
         importance_pq;
     for (int i = 0; i < m_num_nodes; ++i) {
-        int importance = edgeDifferenceHeuristic(contracted, i);
+        int importance = weightedCostHeuristic(contracted, i);
         importance_pq.emplace(std::make_pair(importance, i));
     }
 
     while (num_contracted != m_num_nodes) {
         auto contracted_node = importance_pq.top();
         importance_pq.pop();
-        int new_importance = edgeDifferenceHeuristic(contracted, contracted_node.second);
+        int new_importance = weightedCostHeuristic(contracted, contracted_node.second);
         while (new_importance > importance_pq.top().first) {
             importance_pq.emplace(std::make_pair(new_importance, contracted_node.second));
             contracted_node = importance_pq.top();
             importance_pq.pop();
-            new_importance = edgeDifferenceHeuristic(contracted, contracted_node.second);
+            new_importance = weightedCostHeuristic(contracted, contracted_node.second);
         }
 
         contractNode(contracted, contracted_node.second);
@@ -761,6 +802,64 @@ int Graph::edgeDifferenceHeuristic(std::vector<bool>& contracted, int node) {
     m_contr_data.m_reset_outgoing.clear();
 
     return num_added_shortcuts - num_edges_deleted;
+}
+
+int Graph::weightedCostHeuristic(std::vector<bool>& contracted, int node) {
+    int num_outgoing = 0;
+    int num_incomming = 0;
+
+    for (auto& outgoing : m_graph[node]) {
+        if (!contracted[outgoing.m_target]) ++num_outgoing;
+    }
+
+    for (auto& incoming : m_reverse_graph[node]) {
+        if (!contracted[incoming.m_target]) ++num_incomming;
+    }
+
+    int max_cost = 0;
+
+    // mark outgoing nodes
+    // will be used for pruning in contractionDijkstra
+    int max_distance_out = -1;
+    for (auto& outgoing : m_graph[node]) {
+        if (contracted[outgoing.m_target]) continue;
+        if (outgoing.m_cost > max_distance_out) max_distance_out = outgoing.m_cost;
+
+        m_contr_data.m_reset_outgoing.push_back(outgoing.m_target);
+        m_contr_data.m_outgoing[outgoing.m_target] = true;
+    }
+
+    for (auto& incoming : m_reverse_graph[node]) {
+        if (contracted[incoming.m_target]) continue;
+        int max_distance = incoming.m_cost + max_distance_out;
+
+        contractionDijkstra(incoming.m_target, node, contracted, num_outgoing, max_distance);
+
+        for (auto& outgoing : m_graph[node]) {
+            if (m_contr_data.m_visited[outgoing.m_target]) continue;
+            if (contracted[outgoing.m_target]) continue;
+            if (m_contr_data.m_distances[outgoing.m_target] != incoming.m_cost + outgoing.m_cost) continue;
+            if (outgoing.m_target == incoming.m_target) continue;
+
+            m_contr_data.m_visited[outgoing.m_target] = true;
+            m_contr_data.m_reset_visited.push_back(outgoing.m_target);
+
+            if (incoming.m_cost + outgoing.m_cost > max_cost) max_cost = incoming.m_cost + outgoing.m_cost;
+        }
+
+        // reset contraction data
+        for (int& num : m_contr_data.m_reset_visited) m_contr_data.m_visited[num] = false;
+        for (int& num : m_contr_data.m_reset_distances) m_contr_data.m_distances[num] = std::numeric_limits<int>::max();
+        m_contr_data.m_reset_visited.clear();
+        m_contr_data.m_reset_distances.clear();
+    }
+
+    // reset contraction data
+    for (int& num : m_contr_data.m_reset_outgoing) m_contr_data.m_outgoing[num] = false;
+    m_contr_data.m_reset_outgoing.clear();
+
+    return 0.8 * max_cost + 0.2 * num_outgoing * num_incomming;
+    // return max_cost;
 }
 
 void Graph::contractNode(std::vector<bool>& contracted, int contracted_node) {
