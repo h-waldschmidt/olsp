@@ -6,6 +6,7 @@
 #include <iostream>
 #include <numeric>
 #include <queue>
+#include <random>
 #include <sstream>
 #include <unordered_set>
 
@@ -586,6 +587,23 @@ int Graph::maxLabelSize() {
     return max_label_size;
 }
 
+int Graph::numHubLabelsInRange(int lower, int upper) {
+    int count = 0;
+
+    for (auto& fwd_labels : m_fwd_hub_labels) {
+        for (auto& fwd_label : fwd_labels) {
+            if (fwd_label.second > lower && fwd_label.second < upper) ++count;
+        }
+    }
+    for (auto& bwd_labels : m_bwd_hub_labels) {
+        for (auto& bwd_label : bwd_labels) {
+            if (bwd_label.second > lower && bwd_label.second < upper) ++count;
+        }
+    }
+
+    return count;
+}
+
 std::vector<int> Graph::createShortestPathCover(int threshold) {
     std::cout << "Started creating Path Cover." << std::endl;
     auto begin = std::chrono::high_resolution_clock::now();
@@ -613,6 +631,86 @@ std::vector<int> Graph::createShortestPathCover(int threshold) {
     std::cout << "Finished creating Path Cover. Took " << elapsed.count() << " milliseconds" << std::endl;
 
     return path_cover_vec;
+}
+
+std::vector<int> Graph::lowerBound(std::vector<int>& shortest_path_cover, int threshold) {
+    std::cout << "Started creating Path Cover." << std::endl;
+    auto begin = std::chrono::high_resolution_clock::now();
+
+    LowerBoundData lb_data(m_num_nodes);
+    lb_data.m_threshold = threshold;
+
+    // get random node out of shortest_path_cover
+    std::random_device dev;
+    std::mt19937 rng(dev());
+    std::uniform_int_distribution<std::mt19937::result_type> dist(0, static_cast<int>(shortest_path_cover.size()) - 1);
+
+    int spc_nodes_covered = 0;  // spc = shortest path cover
+    std::vector<bool> spc_node_covered(shortest_path_cover.size(), false);
+    std::vector<int> lower_bound;
+    while (spc_nodes_covered != shortest_path_cover.size()) {
+        int cur_spc_node = dist(rng);
+        while (spc_node_covered[cur_spc_node]) cur_spc_node = dist(rng);
+
+        lb_data.m_start_node = cur_spc_node;
+
+        // run dijkstra until threshold reached
+        lowerBoundDijkstra(lb_data);
+
+        // look at paths with length greater than threshold
+        // 1. first find all end nodes with path longer than threshold
+        std::vector<int> end_nodes;
+        for (int i = 0; i < lb_data.m_distances.size(); ++i) {
+            if (lb_data.m_distances[i] < std::numeric_limits<int>::max() && lb_data.m_distances[i] >= threshold)
+                end_nodes.push_back(i);
+            lb_data.m_distances[i] = std::numeric_limits<int>::max();
+        }
+
+        // 2. backtrack paths through end node
+        int selected_end_node = -1;
+        int lowest_num_spc_nodes = std::numeric_limits<int>::max();
+        for (int& node : end_nodes) {
+            int cur_num_spc_nodes = 0;
+            int cur_node = node;
+            while (cur_node != lb_data.m_start_node) {
+                int previous = lb_data.m_previous_node[cur_node];
+                if (lb_data.m_marked[previous]) break;
+
+                if (std::find(shortest_path_cover.begin(), shortest_path_cover.end(), cur_node) !=
+                    shortest_path_cover.end())
+                    ++cur_num_spc_nodes;
+
+                cur_node = previous;
+            }
+
+            if (cur_node == lb_data.m_start_node && cur_num_spc_nodes < lowest_num_spc_nodes) {
+                lowest_num_spc_nodes = cur_num_spc_nodes;
+                selected_end_node = cur_node;
+            }
+        }
+
+        // 3. go through path of selected end node
+        if (selected_end_node != -1) {
+            int cur_node = selected_end_node;
+            while (cur_node != lb_data.m_start_node) {
+                int previous = lb_data.m_previous_node[cur_node];
+                lb_data.m_marked[previous] = true;
+            }
+            lower_bound.push_back(lb_data.m_start_node);
+        }
+
+        // reset data for next run
+        for (int& node : lb_data.m_reset_previous_node) lb_data.m_previous_node[node] = -1;
+        lb_data.m_reset_previous_node.clear();
+
+        ++spc_nodes_covered;
+    }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(end - begin);
+    std::cout << "Finished calculating Lower Bound. Took " << elapsed.count() << " seconds" << std::endl;
+
+    return lower_bound;
 }
 
 void Graph::createReverseGraphNormal() {
@@ -690,6 +788,9 @@ void Graph::createCH() {
     int num_contracted = 0;
 
     m_contr_data = ContractionData(m_num_nodes);
+
+    // std::vector<int> longest_path_fwd(m_num_nodes, 0);
+    // std::vector<int> longest_path_bwd(m_num_nodes, 0);
 
     // initialize importance for all nodes
     std::priority_queue<std::pair<int, int>, std::vector<std::pair<int, int>>, std::greater<std::pair<int, int>>>
@@ -852,6 +953,75 @@ int Graph::weightedCostHeuristic(std::vector<bool>& contracted, int node) {
     // return max_cost;
 }
 
+int Graph::altWeightedCostHeuristic(std::vector<bool>& contracted, int node, std::vector<int>& longest_path_fwd,
+                                    std::vector<int>& longest_path_bwd) {
+    // TODO:
+    int num_outgoing = 0;
+    int num_incomming = 0;
+
+    for (auto& outgoing : m_graph[node]) {
+        if (!contracted[outgoing.m_target]) ++num_outgoing;
+    }
+
+    for (auto& incoming : m_reverse_graph[node]) {
+        if (!contracted[incoming.m_target]) ++num_incomming;
+    }
+
+    int max_cost = 0;
+    int max_path = 0;
+
+    // mark outgoing nodes
+    // will be used for pruning in contractionDijkstra
+    int max_distance_out = -1;
+    for (auto& outgoing : m_graph[node]) {
+        if (contracted[outgoing.m_target]) continue;
+        if (outgoing.m_cost > max_distance_out) max_distance_out = outgoing.m_cost;
+
+        m_contr_data.m_reset_outgoing.push_back(outgoing.m_target);
+        m_contr_data.m_outgoing[outgoing.m_target] = true;
+    }
+
+    for (auto& incoming : m_reverse_graph[node]) {
+        if (contracted[incoming.m_target]) continue;
+        int max_distance = incoming.m_cost + max_distance_out;
+
+        contractionDijkstra(incoming.m_target, node, contracted, num_outgoing, max_distance);
+
+        for (auto& outgoing : m_graph[node]) {
+            if (contracted[outgoing.m_target]) continue;
+            if (outgoing.m_target == incoming.m_target) continue;
+            if (m_contr_data.m_visited[outgoing.m_target]) continue;
+            if (m_contr_data.m_distances[outgoing.m_target] != incoming.m_cost + outgoing.m_cost) continue;
+
+            // TODO: Das auch noch für incoming machen in einer extra liste
+            // update longest_path
+            if (longest_path_fwd[outgoing.m_target] < longest_path_fwd[node] + outgoing.m_cost)
+                longest_path_fwd[outgoing.m_target] = longest_path_fwd[node] + outgoing.m_cost;
+            if (longest_path_bwd[outgoing.m_target] < longest_path_bwd[node] + incoming.m_cost)
+                longest_path_bwd[outgoing.m_target] = longest_path_bwd[node] + incoming.m_cost;
+
+            m_contr_data.m_visited[outgoing.m_target] = true;
+            m_contr_data.m_reset_visited.push_back(outgoing.m_target);
+
+            if (longest_path_fwd[outgoing.m_target] > max_path) max_path = longest_path_fwd[node];
+            if (longest_path_bwd[outgoing.m_target] > max_path) max_path = longest_path_bwd[node];
+            if (outgoing.m_cost + incoming.m_cost > max_cost) max_cost = outgoing.m_cost + incoming.m_cost;
+        }
+
+        // reset contraction data
+        for (int& num : m_contr_data.m_reset_visited) m_contr_data.m_visited[num] = false;
+        for (int& num : m_contr_data.m_reset_distances) m_contr_data.m_distances[num] = std::numeric_limits<int>::max();
+        m_contr_data.m_reset_visited.clear();
+        m_contr_data.m_reset_distances.clear();
+    }
+
+    // reset contraction data
+    for (int& num : m_contr_data.m_reset_outgoing) m_contr_data.m_outgoing[num] = false;
+    m_contr_data.m_reset_outgoing.clear();
+
+    return 0.799 * max_cost + 0.2 * num_outgoing * num_incomming + 0.001 * max_path;
+}
+
 void Graph::contractNode(std::vector<bool>& contracted, int contracted_node) {
     // mark outgoing nodes
     // will be used for pruning in contractionDijkstra
@@ -931,6 +1101,34 @@ void Graph::contractionDijkstra(int start, int contracted_node, std::vector<bool
                     m_contr_data.m_reset_distances.push_back(e.m_target);
                 m_contr_data.m_distances[e.m_target] = m_contr_data.m_distances[cur_node.second] + e.m_cost;
                 pq.push(std::make_pair(m_contr_data.m_distances[e.m_target], e.m_target));
+            }
+        }
+    }
+}
+
+void Graph::lowerBoundDijkstra(LowerBoundData& lb_data) {
+    std::priority_queue<std::pair<int, int>, std::vector<std::pair<int, int>>, std::greater<std::pair<int, int>>> pq;
+
+    lb_data.m_distances[lb_data.m_start_node] = 0;
+    lb_data.m_reset_previous_node.push_back(lb_data.m_start_node);
+    pq.push(std::make_pair(0, lb_data.m_start_node));
+
+    while (!pq.empty()) {
+        std::pair<int, int> cur_node = pq.top();
+        pq.pop();
+
+        if (lb_data.m_distances[cur_node.second] != cur_node.first) continue;
+
+        if (cur_node.first > lb_data.m_threshold) break;
+
+        for (Edge& e : m_graph[cur_node.second]) {
+            if (lb_data.m_marked[e.m_target]) continue;  // TODO: passt das?
+            if (lb_data.m_distances[e.m_target] > lb_data.m_distances[cur_node.second] + e.m_cost) {
+                if (lb_data.m_distances[e.m_target] == std::numeric_limits<int>::max())
+                    lb_data.m_reset_previous_node.push_back(e.m_target);
+                lb_data.m_distances[e.m_target] = lb_data.m_distances[cur_node.second] + e.m_cost;
+                lb_data.m_previous_node[e.m_target] = cur_node.second;
+                pq.push(std::make_pair(lb_data.m_distances[e.m_target], e.m_target));
             }
         }
     }

@@ -34,7 +34,15 @@ int main(int argc, char *argv[]) {
     std::cout << "Average Label size: " << g.averageLabelSize() << std::endl;
     std::cout << "Max Label size: " << g.maxLabelSize() << std::endl;
 
-    auto path_cover = g.createShortestPathCover(40000);
+    int threshold = 40000;
+    std::cout << "Num Labels with weight between: " << threshold / 2 << " and " << threshold << " : "
+              << g.numHubLabelsInRange(threshold / 2, threshold) << std::endl;
+
+    auto path_cover = g.createShortestPathCover(threshold);
     std::cout << "Path Cover Size: " << path_cover.size() << std::endl;
+
+    auto lower_bound = g.lowerBound(path_cover, threshold);
+    std::cout << "Lower Bound Size: " << lower_bound.size();
+
     return 0;
 }

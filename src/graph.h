@@ -25,11 +25,27 @@ struct ContractionData {
     std::vector<int> m_reset_visited;
     std::vector<int> m_distances;
     std::vector<int> m_reset_distances;
+
     ContractionData(int num_nodes)
         : m_outgoing(num_nodes, false),
           m_visited(num_nodes, false),
           m_distances(num_nodes, std::numeric_limits<int>::max()) {}
-    ContractionData() {}
+    ContractionData() = default;
+};
+
+struct LowerBoundData {
+    int m_start_node;
+    int m_threshold;
+    std::vector<bool> m_marked;
+    std::vector<int> m_distances;
+    std::vector<int> m_previous_node;
+    std::vector<int> m_reset_previous_node;
+
+    LowerBoundData(int num_nodes)
+        : m_marked(num_nodes, false),
+          m_distances(num_nodes, std::numeric_limits<int>::max()),
+          m_previous_node(num_nodes, -1) {}
+    LowerBoundData() = default;
 };
 
 struct QueryData {
@@ -51,6 +67,7 @@ struct QueryData {
           m_fwd_prev(0),
           m_bwd_prev(0),
           m_shortest_path(0) {}
+    QueryData() = default;
 };
 
 enum ReadMode { NORMAL = 0, CONTRACTION_HIERARCHY = 1 };
@@ -70,6 +87,9 @@ class Graph {
 
     static int dijkstraQuery(std::vector<std::vector<Edge>>& graph, int start, int end);
 
+    // Don't use this function with a graph based on contraction hierachies
+    // It will sometimes produce wrong results depending on the hierachiy
+    // instead use contractionHierachyQuery function
     void bidirectionalDijkstraQuery(QueryData& data);
 
     void bidirectionalDijkstraGetPath(QueryData& data);
@@ -84,7 +104,11 @@ class Graph {
 
     int maxLabelSize();
 
+    int numHubLabelsInRange(int upper, int lower);
+
     std::vector<int> createShortestPathCover(int threshold);
+
+    std::vector<int> lowerBound(std::vector<int>& shortest_path_cover, int threshold);
 
     std::vector<std::vector<Edge>>& getGraphVec() { return m_graph; }
 
@@ -112,9 +136,15 @@ class Graph {
 
     int weightedCostHeuristic(std::vector<bool>& contracted, int node);
 
+    int altWeightedCostHeuristic(std::vector<bool>& contracted, int node, std::vector<int>& longest_path_fwd,
+                                 std::vector<int>& longest_path_bwd);
+
     void contractNode(std::vector<bool>& contracted, int contracted_node);
 
-    void contractionDijkstra(int start, int contracted_node, std::vector<bool>&, int num_outgoing, int max_distance);
+    void contractionDijkstra(int start, int contracted_node, std::vector<bool>& contracted, int num_outgoing,
+                             int max_distance);
+
+    void lowerBoundDijkstra(LowerBoundData& lb_data);
 
     int simplifiedHubLabelQuery(std::vector<std::pair<int, int>>& fwd_labels,
                                 std::vector<std::pair<int, int>>& bwd_labels);
