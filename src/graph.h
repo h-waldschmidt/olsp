@@ -25,12 +25,29 @@ struct ContractionData {
     std::vector<int> m_reset_visited;
     std::vector<int> m_distances;
     std::vector<int> m_reset_distances;
+    std::vector<int> m_num_deleted_neighbours;
 
     ContractionData(int num_nodes)
         : m_outgoing(num_nodes, false),
           m_visited(num_nodes, false),
           m_distances(num_nodes, std::numeric_limits<int>::max()) {}
     ContractionData() = default;
+};
+
+struct AdvancedHubLabelData {
+    std::vector<bool> m_visited_fwd;
+    std::vector<bool> m_visited_bwd;
+    std::vector<int> m_distances_fwd;
+    std::vector<int> m_distances_bwd;
+
+    std::vector<int> m_reset_nodes_fwd;
+    std::vector<int> m_reset_nodes_bwd;
+
+    AdvancedHubLabelData(int num_nodes)
+        : m_visited_fwd(num_nodes, false),
+          m_visited_bwd(num_nodes, false),
+          m_distances_fwd(num_nodes, std::numeric_limits<int>::max()),
+          m_distances_bwd(num_nodes, std::numeric_limits<int>::max()) {}
 };
 
 struct LowerBoundData {
@@ -58,7 +75,14 @@ struct QueryData {
     std::vector<int> m_bwd_prev;  // bwd = backward
     std::vector<int> m_shortest_path;
 
-    QueryData(int start, int end, bool path_needed)
+    std::vector<bool> visited_fwd;
+    std::vector<bool> visited_bwd;
+    std::vector<int> distances_fwd;
+    std::vector<int> distances_bwd;
+    std::vector<int> reset_fwd;
+    std::vector<int> reset_bwd;
+
+    QueryData(int start, int end, int num_nodes, bool path_needed)
         : m_start(start),
           m_end(end),
           m_meeting_node(-1),
@@ -66,7 +90,11 @@ struct QueryData {
           m_path_needed(path_needed),
           m_fwd_prev(0),
           m_bwd_prev(0),
-          m_shortest_path(0) {}
+          m_shortest_path(0),
+          visited_fwd(num_nodes, false),
+          visited_bwd(num_nodes, false),
+          distances_fwd(num_nodes, std::numeric_limits<int>::max()),
+          distances_bwd(num_nodes, std::numeric_limits<int>::max()) {}
     QueryData() = default;
 };
 
@@ -76,14 +104,16 @@ enum DistanceMode { TRAVEL_TIME = 0, DISTANCE_METERS = 1 };
 
 class Graph {
    public:
-    Graph(const std::string& path, ReadMode read_mode, bool ch_available,
+    Graph(const std::string& path, ReadMode read_mode, bool ch_available, bool prune_graph,
           DistanceMode dist_mode = DistanceMode::TRAVEL_TIME);
     Graph(std::vector<std::vector<Edge>> graph);  // TODO: Adjust constructors for normal mode and ch mode
     ~Graph() = default;
 
     void readGraph(const std::string& path, ReadMode read_mode, DistanceMode dist_mode);
 
-    void createReverseGraph();
+    void createReverseGraph(bool prune_graph);
+
+    int getNumNodes() { return m_num_nodes; }
 
     static int dijkstraQuery(std::vector<std::vector<Edge>>& graph, int start, int end);
 
@@ -97,6 +127,10 @@ class Graph {
     void contractionHierachyQuery(QueryData& data);
 
     void createHubLabels();
+
+    void advancedCreateHubLabels();
+    void forwardCHSearch(AdvancedHubLabelData& data, int start_node);
+    void backwardCHSearch(AdvancedHubLabelData& data, int start_node);
 
     void hubLabelQuery(QueryData& data);
 
@@ -138,6 +172,11 @@ class Graph {
 
     int altWeightedCostHeuristic(std::vector<bool>& contracted, int node, std::vector<int>& longest_path_fwd,
                                  std::vector<int>& longest_path_bwd);
+
+    int deletedNeighboursHeuristic(std::vector<bool>& contracted, int node, std::vector<int>& num_deleted_neighbours);
+
+    int microsoftHeuristic(std::vector<bool>& contracted, int node, std::vector<int>& num_deleted_neighbours,
+                           int cur_level);
 
     void contractNode(std::vector<bool>& contracted, int contracted_node);
 
