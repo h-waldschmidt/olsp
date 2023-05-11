@@ -584,7 +584,7 @@ void Graph::advancedCreateHubLabels() {
         forwardCHSearch(hub_label_data, node);
         for (int j = 0; j < hub_label_data.m_reset_nodes_fwd.size(); ++j) {
             if (hub_label_data.m_reset_nodes_fwd[j] == node) continue;
-            if (m_node_level[node] > m_node_level[hub_label_data.m_reset_nodes_fwd[j]]) continue;
+            if (m_node_level[node] >= m_node_level[hub_label_data.m_reset_nodes_fwd[j]]) continue;
             bool should_be_added = true;
             for (Edge& e : m_reverse_graph[hub_label_data.m_reset_nodes_fwd[j]]) {
                 if (m_node_level[e.m_target] <= m_node_level[hub_label_data.m_reset_nodes_fwd[j]]) continue;
@@ -595,18 +595,15 @@ void Graph::advancedCreateHubLabels() {
                     break;
                 }
             }
-            if (should_be_added) {
-                q_data.m_end = hub_label_data.m_reset_nodes_fwd[j];
-                contractionHierachyQuery(q_data);
-            }
 
-            if (should_be_added &&
-                q_data.m_distance == hub_label_data.m_distances_fwd[hub_label_data.m_reset_nodes_fwd[j]])
+            if (should_be_added)
                 m_fwd_hub_labels[node].push_back(
                     std::make_pair(hub_label_data.m_reset_nodes_fwd[j],
                                    hub_label_data.m_distances_fwd[hub_label_data.m_reset_nodes_fwd[j]]));
         }
 
+        std::sort(m_fwd_hub_labels[node].begin(), m_fwd_hub_labels[node].end(),
+                  [](auto& left, auto& right) { return left.first < right.first; });
         // bootstrapping
         for (auto iter = m_fwd_hub_labels[node].begin(); iter != m_fwd_hub_labels[node].end();) {
             int best_dist = std::numeric_limits<int>::max();
@@ -625,11 +622,11 @@ void Graph::advancedCreateHubLabels() {
         backwardCHSearch(hub_label_data, node);
         for (int j = 0; j < hub_label_data.m_reset_nodes_bwd.size(); ++j) {
             if (hub_label_data.m_reset_nodes_bwd[j] == node) continue;
-            if (m_node_level[node] > m_node_level[hub_label_data.m_reset_nodes_bwd[j]]) continue;
+            if (m_node_level[node] >= m_node_level[hub_label_data.m_reset_nodes_bwd[j]]) continue;
 
             bool should_be_added = true;
-            for (Edge& e : m_reverse_graph[hub_label_data.m_reset_nodes_bwd[j]]) {
-                if (m_node_level[e.m_target] >= m_node_level[hub_label_data.m_reset_nodes_bwd[j]]) continue;
+            for (Edge& e : m_graph[hub_label_data.m_reset_nodes_bwd[j]]) {
+                if (m_node_level[e.m_target] <= m_node_level[hub_label_data.m_reset_nodes_bwd[j]]) continue;
 
                 if (hub_label_data.m_distances_bwd[e.m_target] + e.m_cost <
                     hub_label_data.m_distances_bwd[hub_label_data.m_reset_nodes_bwd[j]]) {
@@ -637,17 +634,15 @@ void Graph::advancedCreateHubLabels() {
                     break;
                 }
             }
-            if (should_be_added) {
-                q_data.m_start = hub_label_data.m_reset_nodes_bwd[j];
-                contractionHierachyQuery(q_data);
-            }
 
-            if (should_be_added &&
-                q_data.m_distance == hub_label_data.m_distances_bwd[hub_label_data.m_reset_nodes_bwd[j]])
+            if (should_be_added)
                 m_bwd_hub_labels[node].push_back(
                     std::make_pair(hub_label_data.m_reset_nodes_bwd[j],
                                    hub_label_data.m_distances_bwd[hub_label_data.m_reset_nodes_bwd[j]]));
         }
+
+        std::sort(m_bwd_hub_labels[node].begin(), m_bwd_hub_labels[node].end(),
+                  [](auto& left, auto& right) { return left.first < right.first; });
 
         // bootstrapping
         for (auto iter = m_bwd_hub_labels[node].begin(); iter != m_bwd_hub_labels[node].end();) {
@@ -740,7 +735,7 @@ void Graph::backwardCHSearch(AdvancedHubLabelData& data, int start_node) {
             if (m_node_level[e.m_target] <= m_node_level[bwd_node.second]) continue;
 
             if (!data.m_visited_bwd[e.m_target] || data.m_distances_bwd[e.m_target] > bwd_node.first + e.m_cost) {
-                if (data.m_visited_bwd[e.m_target]) data.m_reset_nodes_bwd.push_back(e.m_target);
+                if (!data.m_visited_bwd[e.m_target]) data.m_reset_nodes_bwd.push_back(e.m_target);
                 data.m_visited_bwd[e.m_target] = true;
 
                 data.m_distances_bwd[e.m_target] = bwd_node.first + e.m_cost;
@@ -1016,19 +1011,19 @@ void Graph::createCH() {
     std::priority_queue<std::pair<int, int>, std::vector<std::pair<int, int>>, std::greater<std::pair<int, int>>>
         importance_pq;
     for (int i = 0; i < m_num_nodes; ++i) {
-        int importance = edgeDifferenceHeuristic(contracted, i);
+        int importance = weightedCostHeuristic(contracted, i);
         importance_pq.emplace(std::make_pair(importance, i));
     }
 
     while (num_contracted != m_num_nodes) {
         auto contracted_node = importance_pq.top();
         importance_pq.pop();
-        int new_importance = edgeDifferenceHeuristic(contracted, contracted_node.second);
+        int new_importance = weightedCostHeuristic(contracted, contracted_node.second);
         while (new_importance > importance_pq.top().first) {
             importance_pq.emplace(std::make_pair(new_importance, contracted_node.second));
             contracted_node = importance_pq.top();
             importance_pq.pop();
-            new_importance = edgeDifferenceHeuristic(contracted, contracted_node.second);
+            new_importance = weightedCostHeuristic(contracted, contracted_node.second);
         }
 
         contractNode(contracted, contracted_node.second);
