@@ -36,8 +36,15 @@ void Graph::readGraph(const std::string& path, ReadMode read_mode, DistanceMode 
     std::cout << "Started reading graph file." << std::endl;
 
     auto begin = std::chrono::high_resolution_clock::now();
+    std::ifstream infile;
+    try {
+        infile.open(path);
+        if (!infile.good()) throw std::runtime_error("File doesn't exist!");
+    } catch (const std::exception& e) {
+        std::cerr << e.what() << '\n';
+        exit(1);
+    }
 
-    std::ifstream infile(path);
     std::string line = "#";
 
     // skip the metadata which begins with #
