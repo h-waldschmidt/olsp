@@ -591,10 +591,10 @@ void Graph::advancedCreateHubLabels() {
         forwardCHSearch(hub_label_data, node);
         for (int j = 0; j < hub_label_data.m_reset_nodes_fwd.size(); ++j) {
             if (hub_label_data.m_reset_nodes_fwd[j] == node) continue;
-            if (m_node_level[node] >= m_node_level[hub_label_data.m_reset_nodes_fwd[j]]) continue;
+            // if (m_node_level[node] >= m_node_level[hub_label_data.m_reset_nodes_fwd[j]]) continue;
             bool should_be_added = true;
             for (Edge& e : m_reverse_graph[hub_label_data.m_reset_nodes_fwd[j]]) {
-                if (m_node_level[e.m_target] <= m_node_level[hub_label_data.m_reset_nodes_fwd[j]]) continue;
+                // if (m_node_level[e.m_target] <= m_node_level[hub_label_data.m_reset_nodes_fwd[j]]) continue;
 
                 if (hub_label_data.m_distances_fwd[e.m_target] + e.m_cost <
                     hub_label_data.m_distances_fwd[hub_label_data.m_reset_nodes_fwd[j]]) {
@@ -629,11 +629,11 @@ void Graph::advancedCreateHubLabels() {
         backwardCHSearch(hub_label_data, node);
         for (int j = 0; j < hub_label_data.m_reset_nodes_bwd.size(); ++j) {
             if (hub_label_data.m_reset_nodes_bwd[j] == node) continue;
-            if (m_node_level[node] >= m_node_level[hub_label_data.m_reset_nodes_bwd[j]]) continue;
+            // if (m_node_level[node] >= m_node_level[hub_label_data.m_reset_nodes_bwd[j]]) continue;
 
             bool should_be_added = true;
             for (Edge& e : m_graph[hub_label_data.m_reset_nodes_bwd[j]]) {
-                if (m_node_level[e.m_target] <= m_node_level[hub_label_data.m_reset_nodes_bwd[j]]) continue;
+                // if (m_node_level[e.m_target] <= m_node_level[hub_label_data.m_reset_nodes_bwd[j]]) continue;
 
                 if (hub_label_data.m_distances_bwd[e.m_target] + e.m_cost <
                     hub_label_data.m_distances_bwd[hub_label_data.m_reset_nodes_bwd[j]]) {
@@ -678,7 +678,7 @@ void Graph::advancedCreateHubLabels() {
         }
         hub_label_data.m_reset_nodes_bwd.clear();
 
-        std::cout << "Finished: " << i << "\n";
+        // std::cout << "Finished: " << i << "\n";
     }
 
     auto end = std::chrono::high_resolution_clock::now();
@@ -706,7 +706,7 @@ void Graph::forwardCHSearch(AdvancedHubLabelData& data, int start_node) {
 
         for (Edge& e : m_graph[fwd_node.second]) {
             // relax edge
-            if (m_node_level[e.m_target] <= m_node_level[fwd_node.second]) continue;
+            // if (m_node_level[e.m_target] <= m_node_level[fwd_node.second]) continue;
 
             if (!data.m_visited_fwd[e.m_target] || data.m_distances_fwd[e.m_target] > fwd_node.first + e.m_cost) {
                 if (!data.m_visited_fwd[e.m_target]) data.m_reset_nodes_fwd.push_back(e.m_target);
@@ -739,7 +739,7 @@ void Graph::backwardCHSearch(AdvancedHubLabelData& data, int start_node) {
 
         for (Edge& e : m_reverse_graph[bwd_node.second]) {
             // relax edge
-            if (m_node_level[e.m_target] <= m_node_level[bwd_node.second]) continue;
+            // if (m_node_level[e.m_target] <= m_node_level[bwd_node.second]) continue;
 
             if (!data.m_visited_bwd[e.m_target] || data.m_distances_bwd[e.m_target] > bwd_node.first + e.m_cost) {
                 if (!data.m_visited_bwd[e.m_target]) data.m_reset_nodes_bwd.push_back(e.m_target);
