@@ -575,8 +575,6 @@ void Graph::advancedCreateHubLabels() {
     std::sort(indices_sorted.begin(), indices_sorted.end(),
               [&](int i, int j) { return m_node_level[i] > m_node_level[j]; });
 
-    QueryData q_data(0, 0, m_num_nodes, false);
-
     for (int i = 0; i < m_num_nodes; ++i) {
         int node = indices_sorted[i];
         m_fwd_hub_labels[node].push_back(std::make_pair(node, 0));
@@ -586,8 +584,6 @@ void Graph::advancedCreateHubLabels() {
 
         // fwd lables
         // do forward search and pruning
-        // TODO: pruning with point to point searches
-        q_data.m_start = node;
         forwardCHSearch(hub_label_data, node);
         for (int j = 0; j < hub_label_data.m_reset_nodes_fwd.size(); ++j) {
             if (hub_label_data.m_reset_nodes_fwd[j] == node) continue;
@@ -624,8 +620,6 @@ void Graph::advancedCreateHubLabels() {
 
         // bwd labels
         // do backward search and pruning
-        // TODO: pruning with point to point searches
-        q_data.m_end = node;
         backwardCHSearch(hub_label_data, node);
         for (int j = 0; j < hub_label_data.m_reset_nodes_bwd.size(); ++j) {
             if (hub_label_data.m_reset_nodes_bwd[j] == node) continue;
@@ -678,7 +672,7 @@ void Graph::advancedCreateHubLabels() {
         }
         hub_label_data.m_reset_nodes_bwd.clear();
 
-        // std::cout << "Finished: " << i << "\n";
+        std::cout << "Finished: " << i << "\n";
     }
 
     auto end = std::chrono::high_resolution_clock::now();
