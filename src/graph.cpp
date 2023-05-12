@@ -467,88 +467,103 @@ void Graph::createHubLabels() {
     m_bwd_hub_labels.resize(m_num_nodes);
 
     // sort the levels, but don't change the original vector
-    std::vector<int> indices_sorted(m_num_nodes);
-    std::iota(indices_sorted.begin(), indices_sorted.end(), 0);
-    std::sort(indices_sorted.begin(), indices_sorted.end(),
-              [&](int i, int j) { return m_node_level[i] > m_node_level[j]; });
-
+    std::unordered_set<int> different_levels;
+    for (int i = 0; i < m_num_nodes; i++) {
+        different_levels.emplace(m_node_level[i]);
+    }
+    std::vector<int> different_levels_vec;
+    different_levels_vec.insert(different_levels_vec.end(), different_levels.begin(), different_levels.end());
+    std::sort(different_levels_vec.begin(), different_levels_vec.end(),
+              [](int& left, int& right) { return left > right; });
+    std::vector<std::vector<int>> level_buckets(different_levels_vec.size());
     for (int i = 0; i < m_num_nodes; ++i) {
-        int node = indices_sorted[i];
-        m_fwd_hub_labels[node].push_back(std::make_pair(node, 0));
-        m_bwd_hub_labels[node].push_back(std::make_pair(node, 0));
+        auto iter = find(different_levels_vec.begin(), different_levels_vec.end(), m_node_level[i]);
+        level_buckets[iter - different_levels_vec.begin()].push_back(i);
+    }
+    m_num_threads = 14;
+    omp_set_num_threads(14);
 
-        if (i == 0) continue;
+    for (int i = 0; i < different_levels_vec.size(); ++i) {
+#pragma omp parallel for
+        for (int j = 0; j < level_buckets[i].size(); ++j) {
+            int node = level_buckets[i][j];
+            m_fwd_hub_labels[node].push_back(std::make_pair(node, 0));
+            m_bwd_hub_labels[node].push_back(std::make_pair(node, 0));
 
-        // fwd lables
-        for (Edge& e : m_graph[node]) {
-            if (m_node_level[node] >= m_node_level[e.m_target]) continue;
+            if (i == 0) continue;
 
-            for (std::pair<int, int>& hub : m_fwd_hub_labels[e.m_target])
-                m_fwd_hub_labels[node].push_back(std::make_pair(hub.first, hub.second + e.m_cost));
-        }
+            // fwd lables
+            for (Edge& e : m_graph[node]) {
+                if (m_node_level[node] >= m_node_level[e.m_target]) continue;
 
-        // remove duplicates
-        std::sort(m_fwd_hub_labels[node].begin(), m_fwd_hub_labels[node].end(),
-                  [](auto& left, auto& right) { return left.first < right.first; });
-        for (auto iter = m_fwd_hub_labels[node].begin(); iter != m_fwd_hub_labels[node].end();) {
-            auto iter_2 = m_fwd_hub_labels[node].end() - 1;
-            if (std::distance(iter, iter_2) != 0 && iter->first == (iter + 1)->first) {
-                if (iter->second >= (iter + 1)->second) {
+                for (std::pair<int, int>& hub : m_fwd_hub_labels[e.m_target])
+                    m_fwd_hub_labels[node].push_back(std::make_pair(hub.first, hub.second + e.m_cost));
+            }
+
+            // remove duplicates
+            std::sort(m_fwd_hub_labels[node].begin(), m_fwd_hub_labels[node].end(),
+                      [](auto& left, auto& right) { return left.first < right.first; });
+            for (auto iter = m_fwd_hub_labels[node].begin(); iter != m_fwd_hub_labels[node].end();) {
+                auto iter_2 = m_fwd_hub_labels[node].end() - 1;
+                if (std::distance(iter, iter_2) != 0 && iter->first == (iter + 1)->first) {
+                    if (iter->second >= (iter + 1)->second) {
+                        iter = m_fwd_hub_labels[node].erase(iter);
+                    } else {
+                        iter = m_fwd_hub_labels[node].erase(iter + 1);
+                        --iter;
+                    }
+                } else {
+                    ++iter;
+                }
+            }
+
+            for (auto iter = m_fwd_hub_labels[node].begin(); iter != m_fwd_hub_labels[node].end();) {
+                int best_dist = std::numeric_limits<int>::max();
+                if (iter->first != node)
+                    best_dist = simplifiedHubLabelQuery(m_fwd_hub_labels[node], m_bwd_hub_labels[iter->first]);
+                if (best_dist < iter->second)
                     iter = m_fwd_hub_labels[node].erase(iter);
-                } else {
-                    iter = m_fwd_hub_labels[node].erase(iter + 1);
-                    --iter;
-                }
-            } else {
-                ++iter;
+                else
+                    ++iter;
             }
-        }
 
-        for (auto iter = m_fwd_hub_labels[node].begin(); iter != m_fwd_hub_labels[node].end();) {
-            int best_dist = std::numeric_limits<int>::max();
-            if (iter->first != node)
-                best_dist = simplifiedHubLabelQuery(m_fwd_hub_labels[node], m_bwd_hub_labels[iter->first]);
-            if (best_dist < iter->second)
-                iter = m_fwd_hub_labels[node].erase(iter);
-            else
-                ++iter;
-        }
+            // bwd labels
+            for (Edge& e : m_reverse_graph[node]) {
+                if (m_node_level[node] >= m_node_level[e.m_target]) continue;
 
-        // bwd labels
-        for (Edge& e : m_reverse_graph[node]) {
-            if (m_node_level[node] >= m_node_level[e.m_target]) continue;
+                for (std::pair<int, int>& hub : m_bwd_hub_labels[e.m_target])
+                    m_bwd_hub_labels[node].push_back(std::make_pair(hub.first, hub.second + e.m_cost));
+            }
 
-            for (std::pair<int, int>& hub : m_bwd_hub_labels[e.m_target])
-                m_bwd_hub_labels[node].push_back(std::make_pair(hub.first, hub.second + e.m_cost));
-        }
+            // remove duplicates
+            std::sort(m_bwd_hub_labels[node].begin(), m_bwd_hub_labels[node].end(),
+                      [](auto& left, auto& right) { return left.first < right.first; });
+            for (auto iter = m_bwd_hub_labels[node].begin(); iter != m_bwd_hub_labels[node].end();) {
+                auto iter_2 = m_bwd_hub_labels[node].end() - 1;
+                if (std::distance(iter, iter_2) != 0 && iter->first == (iter + 1)->first) {
+                    if (iter->second >= (iter + 1)->second) {
+                        iter = m_bwd_hub_labels[node].erase(iter);
+                    } else {
+                        iter = m_bwd_hub_labels[node].erase(iter + 1);
+                        --iter;
+                    }
+                } else {
+                    ++iter;
+                }
+            }
 
-        // remove duplicates
-        std::sort(m_bwd_hub_labels[node].begin(), m_bwd_hub_labels[node].end(),
-                  [](auto& left, auto& right) { return left.first < right.first; });
-        for (auto iter = m_bwd_hub_labels[node].begin(); iter != m_bwd_hub_labels[node].end();) {
-            auto iter_2 = m_bwd_hub_labels[node].end() - 1;
-            if (std::distance(iter, iter_2) != 0 && iter->first == (iter + 1)->first) {
-                if (iter->second >= (iter + 1)->second) {
+            for (auto iter = m_bwd_hub_labels[node].begin(); iter != m_bwd_hub_labels[node].end();) {
+                int best_dist = std::numeric_limits<int>::max();
+                if (iter->first != node)
+                    best_dist = simplifiedHubLabelQuery(m_fwd_hub_labels[iter->first], m_bwd_hub_labels[node]);
+                if (best_dist < iter->second)
                     iter = m_bwd_hub_labels[node].erase(iter);
-                } else {
-                    iter = m_bwd_hub_labels[node].erase(iter + 1);
-                    --iter;
-                }
-            } else {
-                ++iter;
+                else
+                    ++iter;
             }
         }
-
-        for (auto iter = m_bwd_hub_labels[node].begin(); iter != m_bwd_hub_labels[node].end();) {
-            int best_dist = std::numeric_limits<int>::max();
-            if (iter->first != node)
-                best_dist = simplifiedHubLabelQuery(m_fwd_hub_labels[iter->first], m_bwd_hub_labels[node]);
-            if (best_dist < iter->second)
-                iter = m_bwd_hub_labels[node].erase(iter);
-            else
-                ++iter;
-        }
-        // std::cout << "Finished: " << i << "\n";
+        std::cout << "Finished: " << level_buckets[i].size() << " num of nodes"
+                  << "\n";
     }
 
     auto end = std::chrono::high_resolution_clock::now();
@@ -1006,10 +1021,9 @@ void Graph::createCH() {
     int cur_level = 0;
 
     m_contr_data.resize(m_num_threads);
-    for (int i = 0; i < m_num_threads; ++i) m_contr_data[i] = ContractionData(m_num_nodes);
-
-    // m_contr_data.m_num_deleted_neighbours.clear();
-    // m_contr_data.m_num_deleted_neighbours.resize(m_num_nodes, 0);
+    for (int i = 0; i < m_num_threads; ++i) {
+        m_contr_data[i] = ContractionData(m_num_nodes);
+    }
 
     // std::vector<int> longest_path_fwd(m_num_nodes, 0);
     // std::vector<int> longest_path_bwd(m_num_nodes, 0);
@@ -1018,7 +1032,7 @@ void Graph::createCH() {
     std::priority_queue<std::pair<int, int>, std::vector<std::pair<int, int>>, std::greater<std::pair<int, int>>>
         importance_pq;
     for (int i = 0; i < m_num_nodes; ++i) {
-        int importance = weightedCostHeuristic(contracted, i);
+        int importance = microsoftHeuristic(contracted, i, 0);
         importance_pq.emplace(std::make_pair(importance, i));
     }
 
@@ -1029,7 +1043,6 @@ void Graph::createCH() {
         std::priority_queue<std::pair<int, int>, std::vector<std::pair<int, int>>, std::greater<std::pair<int, int>>>
             new_pq;
         while (!importance_pq.empty()) {
-            // TODO: improve this part for runtime, when slow
             auto contracted_node = importance_pq.top();
             importance_pq.pop();
 
@@ -1039,7 +1052,7 @@ void Graph::createCH() {
             }
 
             if (cur_level != 0) {
-                int new_importance = weightedCostHeuristic(contracted, contracted_node.second);
+                int new_importance = microsoftHeuristic(contracted, contracted_node.second, cur_level);
                 while (new_importance > importance_pq.top().first) {
                     // std::cout << importance_pq.size() << std::endl;
                     if (marked[contracted_node.second])
@@ -1048,7 +1061,7 @@ void Graph::createCH() {
                         importance_pq.emplace(std::make_pair(new_importance, contracted_node.second));
                     contracted_node = importance_pq.top();
                     importance_pq.pop();
-                    new_importance = weightedCostHeuristic(contracted, contracted_node.second);
+                    new_importance = microsoftHeuristic(contracted, contracted_node.second, cur_level);
                 }
             }
 
@@ -1230,7 +1243,7 @@ int Graph::weightedCostHeuristic(std::vector<bool>& contracted, int node) {
     for (int& num : m_contr_data[0].m_reset_outgoing) m_contr_data[0].m_outgoing[num] = false;
     m_contr_data[0].m_reset_outgoing.clear();
 
-    return 0.8 * max_cost + 0.2 * num_outgoing * num_incomming;
+    return 0.6 * max_cost + 0.4 * num_outgoing * num_incomming;
     // return max_cost;
 }
 
@@ -1362,8 +1375,8 @@ int Graph::deletedNeighboursHeuristic(std::vector<bool>& contracted, int node,
     return 0.8 * max_cost + 0.2 * num_outgoing * num_incomming + 0.0 * num_deleted_neighbours[node];
 }
 
-int Graph::microsoftHeuristic(std::vector<bool>& contracted, int node, std::vector<int>& num_deleted_neighbours,
-                              int cur_level) {
+// TODO: finish this and test it
+int Graph::microsoftHeuristic(std::vector<bool>& contracted, int node, int cur_level) {
     int num_outgoing = 0;
     int num_incomming = 0;
 
@@ -1435,8 +1448,7 @@ int Graph::microsoftHeuristic(std::vector<bool>& contracted, int node, std::vect
     else
         ++max_neighbour_level;
 
-    return 0.01 * max_cost + 0.2 * (num_added_shortcuts - (num_incomming + num_outgoing)) +
-           0.2 * num_deleted_neighbours[node] + 0.59 * max_neighbour_level;
+    return 0.01 * max_cost + 2 * (num_added_shortcuts - (num_incomming + num_outgoing)) + 5 * max_neighbour_level;
 }
 
 void Graph::contractNode(std::vector<bool>& contracted, int contracted_node) {
@@ -1458,7 +1470,6 @@ void Graph::contractNode(std::vector<bool>& contracted, int contracted_node) {
         if (contracted[incoming.m_target]) continue;
         int max_distance = incoming.m_cost + max_distance_out;
 
-        //++m_contr_data[thread_num].m_num_deleted_neighbours[incoming.m_target];
         contractionDijkstra(incoming.m_target, contracted_node, contracted, num_outgoing, max_distance);
 
         for (auto& outgoing : m_graph[contracted_node]) {
@@ -1466,8 +1477,6 @@ void Graph::contractNode(std::vector<bool>& contracted, int contracted_node) {
             if (contracted[outgoing.m_target]) continue;
             if (m_contr_data[thread_num].m_distances[outgoing.m_target] != incoming.m_cost + outgoing.m_cost) continue;
             if (outgoing.m_target == incoming.m_target) continue;
-
-            //++m_contr_data[thread_num].m_num_deleted_neighbours[outgoing.m_target];
 
             m_contr_data[thread_num].m_visited[outgoing.m_target] = true;
             m_contr_data[thread_num].m_reset_visited.push_back(outgoing.m_target);

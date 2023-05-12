@@ -25,7 +25,6 @@ struct ContractionData {
     std::vector<int> m_reset_visited;
     std::vector<int> m_distances;
     std::vector<int> m_reset_distances;
-    std::vector<int> m_num_deleted_neighbours;
     std::vector<std::pair<int, Edge>> m_shortcuts_fwd;
     std::vector<std::pair<int, Edge>> m_shortcuts_bwd;
 
@@ -180,8 +179,7 @@ class Graph {
 
     int deletedNeighboursHeuristic(std::vector<bool>& contracted, int node, std::vector<int>& num_deleted_neighbours);
 
-    int microsoftHeuristic(std::vector<bool>& contracted, int node, std::vector<int>& num_deleted_neighbours,
-                           int cur_level);
+    int microsoftHeuristic(std::vector<bool>& contracted, int node, int cur_level);
 
     void contractNode(std::vector<bool>& contracted, int contracted_node);
 
