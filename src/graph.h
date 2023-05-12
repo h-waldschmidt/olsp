@@ -26,6 +26,8 @@ struct ContractionData {
     std::vector<int> m_distances;
     std::vector<int> m_reset_distances;
     std::vector<int> m_num_deleted_neighbours;
+    std::vector<std::pair<int, Edge>> m_shortcuts_fwd;
+    std::vector<std::pair<int, Edge>> m_shortcuts_bwd;
 
     ContractionData(int num_nodes)
         : m_outgoing(num_nodes, false),
@@ -104,7 +106,7 @@ enum DistanceMode { TRAVEL_TIME = 0, DISTANCE_METERS = 1 };
 
 class Graph {
    public:
-    Graph(const std::string& path, ReadMode read_mode, bool ch_available, bool prune_graph,
+    Graph(const std::string& path, ReadMode read_mode, bool ch_available, bool prune_graph, int num_threads,
           DistanceMode dist_mode = DistanceMode::TRAVEL_TIME);
     Graph(std::vector<std::vector<Edge>> graph);  // TODO: Adjust constructors for normal mode and ch mode
     ~Graph() = default;
@@ -146,13 +148,16 @@ class Graph {
 
     std::vector<std::vector<Edge>>& getGraphVec() { return m_graph; }
 
+    void setNumThreads(int num_of_threads) { m_num_threads = num_of_threads; }
+
    private:
     bool m_ch_available;  // ch = Contraction Hierarchy
     int m_num_nodes;
+    int m_num_threads;
     std::vector<std::vector<Edge>> m_graph;
     std::vector<std::vector<Edge>> m_reverse_graph;
     std::vector<int> m_node_level;
-    ContractionData m_contr_data;
+    std::vector<ContractionData> m_contr_data;
     std::vector<std::vector<std::pair<int, int>>> m_fwd_hub_labels;
     std::vector<std::vector<std::pair<int, int>>> m_bwd_hub_labels;
 

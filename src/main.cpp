@@ -1,3 +1,5 @@
+#include <omp.h>
+
 #include <iostream>
 
 #include "graph.h"
@@ -7,8 +9,9 @@ int main(int argc, char *argv[]) {
     // olsp::ReadMode::CONTRACTION_HIERACHIES);
 
     // don't prune graph when using advanced hub label creation
-    olsp::Graph g("/home/helmut/Documents/BachelorArbeit/bachelorarbeit/data/stgtregbz_ch.fmi",
-                  olsp::ReadMode::CONTRACTION_HIERARCHY, true, false, olsp::DistanceMode::TRAVEL_TIME);
+    omp_set_num_threads(12);
+    olsp::Graph g("/home/helmut/Documents/BachelorArbeit/bachelorarbeit/data/stgtregbz.fmi", olsp::ReadMode::NORMAL,
+                  true, true, 12, olsp::DistanceMode::TRAVEL_TIME);
 
     // int dist = olsp::Graph::dijkstraQuery(g.getGraphVec(), 377371, 754742);
     // std::cout << "Distance: " << dist << std::endl;
@@ -28,25 +31,27 @@ int main(int argc, char *argv[]) {
         // g.bidirectionalDijkstraGetPath(bd_data);
     }
 
-    olsp::QueryData bd_data(377371, 754742, g.getNumNodes(), false);
+    /*
+        olsp::QueryData bd_data(377371, 754742, 0, false);
 
-    g.advancedCreateHubLabels();
-    g.hubLabelQuery(bd_data);
-    std::cout << "Distance: " << bd_data.m_distance << std::endl;
-    std::cout << bd_data.m_meeting_node << std::endl;
+        g.createHubLabels();
+        g.hubLabelQuery(bd_data);
+        std::cout << "Distance: " << bd_data.m_distance << std::endl;
+        std::cout << bd_data.m_meeting_node << std::endl;
 
-    std::cout << "Average Label size: " << g.averageLabelSize() << std::endl;
-    std::cout << "Max Label size: " << g.maxLabelSize() << std::endl;
+        std::cout << "Average Label size: " << g.averageLabelSize() << std::endl;
+        std::cout << "Max Label size: " << g.maxLabelSize() << std::endl;
 
-    int threshold = 40000;
-    std::cout << "Num Labels with weight between: " << threshold / 2 << " and " << threshold << " : "
-              << g.numHubLabelsInRange(threshold / 2, threshold) << std::endl;
+        int threshold = 40000;
+        std::cout << "Num Labels with weight between: " << threshold / 2 << " and " << threshold << " : "
+                  << g.numHubLabelsInRange(threshold / 2, threshold) << std::endl;
 
-    auto path_cover = g.createShortestPathCover(threshold);
-    std::cout << "Path Cover Size: " << path_cover.size() << std::endl;
+        auto path_cover = g.createShortestPathCover(threshold);
+        std::cout << "Path Cover Size: " << path_cover.size() << std::endl;
 
-    auto lower_bound = g.lowerBound(path_cover, threshold);
-    std::cout << "Lower Bound Size: " << lower_bound.size();
+        auto lower_bound = g.lowerBound(path_cover, threshold);
+        std::cout << "Lower Bound Size: " << lower_bound.size();
+    */
 
     return 0;
 }
