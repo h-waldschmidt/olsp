@@ -548,7 +548,7 @@ void Graph::createHubLabels() {
             else
                 ++iter;
         }
-        std::cout << "Finished: " << i << "\n";
+        // std::cout << "Finished: " << i << "\n";
     }
 
     auto end = std::chrono::high_resolution_clock::now();
@@ -1018,7 +1018,7 @@ void Graph::createCH() {
     std::priority_queue<std::pair<int, int>, std::vector<std::pair<int, int>>, std::greater<std::pair<int, int>>>
         importance_pq;
     for (int i = 0; i < m_num_nodes; ++i) {
-        int importance = inOutProductHeuristic(contracted, i);
+        int importance = weightedCostHeuristic(contracted, i);
         importance_pq.emplace(std::make_pair(importance, i));
     }
 
@@ -1039,7 +1039,7 @@ void Graph::createCH() {
             }
 
             if (cur_level != 0) {
-                int new_importance = inOutProductHeuristic(contracted, contracted_node.second);
+                int new_importance = weightedCostHeuristic(contracted, contracted_node.second);
                 while (new_importance > importance_pq.top().first) {
                     // std::cout << importance_pq.size() << std::endl;
                     if (marked[contracted_node.second])
@@ -1048,7 +1048,7 @@ void Graph::createCH() {
                         importance_pq.emplace(std::make_pair(new_importance, contracted_node.second));
                     contracted_node = importance_pq.top();
                     importance_pq.pop();
-                    new_importance = inOutProductHeuristic(contracted, contracted_node.second);
+                    new_importance = weightedCostHeuristic(contracted, contracted_node.second);
                 }
             }
 
@@ -1064,7 +1064,7 @@ void Graph::createCH() {
         importance_pq = new_pq;
 
 // contract nodes from independent set in parallel
-#pragma omp parallel for schedule(dynamic)
+#pragma omp parallel for
         for (int i = 0; i < independent_set.size(); ++i) {
             contractNode(contracted, independent_set[i]);
             contracted[independent_set[i]] = true;
@@ -1082,7 +1082,12 @@ void Graph::createCH() {
         }
 
         num_contracted += static_cast<int>(independent_set.size());
-        if (num_contracted >= 1130279) break;
+
+        if (num_contracted >= m_num_nodes * 0.8) {
+            omp_set_num_threads(1);
+            m_num_threads = 1;
+        }
+
         ++cur_level;
         std::cout << "Finished contracting: " << num_contracted << "\n";
     }
@@ -1439,57 +1444,52 @@ void Graph::contractNode(std::vector<bool>& contracted, int contracted_node) {
     // will be used for pruning in contractionDijkstra
     int num_outgoing = 0;
     int max_distance_out = -1;
+    int thread_num = omp_get_thread_num();
     for (auto& outgoing : m_graph[contracted_node]) {
         if (contracted[outgoing.m_target]) continue;
         if (outgoing.m_cost > max_distance_out) max_distance_out = outgoing.m_cost;
 
         ++num_outgoing;
-        m_contr_data[omp_get_thread_num()].m_reset_outgoing.push_back(outgoing.m_target);
-        m_contr_data[omp_get_thread_num()].m_outgoing[outgoing.m_target] = true;
+        m_contr_data[thread_num].m_reset_outgoing.push_back(outgoing.m_target);
+        m_contr_data[thread_num].m_outgoing[outgoing.m_target] = true;
     }
 
     for (auto& incoming : m_reverse_graph[contracted_node]) {
         if (contracted[incoming.m_target]) continue;
         int max_distance = incoming.m_cost + max_distance_out;
 
-        //++m_contr_data[omp_get_thread_num()].m_num_deleted_neighbours[incoming.m_target];
-        int test = omp_get_thread_num();
+        //++m_contr_data[thread_num].m_num_deleted_neighbours[incoming.m_target];
         contractionDijkstra(incoming.m_target, contracted_node, contracted, num_outgoing, max_distance);
 
         for (auto& outgoing : m_graph[contracted_node]) {
-            if (m_contr_data[omp_get_thread_num()].m_visited[outgoing.m_target]) continue;
+            if (m_contr_data[thread_num].m_visited[outgoing.m_target]) continue;
             if (contracted[outgoing.m_target]) continue;
-            if (m_contr_data[omp_get_thread_num()].m_distances[outgoing.m_target] != incoming.m_cost + outgoing.m_cost)
-                continue;
+            if (m_contr_data[thread_num].m_distances[outgoing.m_target] != incoming.m_cost + outgoing.m_cost) continue;
             if (outgoing.m_target == incoming.m_target) continue;
 
-            //++m_contr_data[omp_get_thread_num()].m_num_deleted_neighbours[outgoing.m_target];
+            //++m_contr_data[thread_num].m_num_deleted_neighbours[outgoing.m_target];
 
-            m_contr_data[omp_get_thread_num()].m_visited[outgoing.m_target] = true;
-            m_contr_data[omp_get_thread_num()].m_reset_visited.push_back(outgoing.m_target);
+            m_contr_data[thread_num].m_visited[outgoing.m_target] = true;
+            m_contr_data[thread_num].m_reset_visited.push_back(outgoing.m_target);
 
             // add shortcut
             Edge fwd_shortcut(outgoing.m_target, incoming.m_cost + outgoing.m_cost, contracted_node, contracted_node);
-            m_contr_data[omp_get_thread_num()].m_shortcuts_fwd.push_back(
-                std::make_pair(incoming.m_target, fwd_shortcut));
+            m_contr_data[thread_num].m_shortcuts_fwd.push_back(std::make_pair(incoming.m_target, fwd_shortcut));
             Edge bwd_shortcut(incoming.m_target, incoming.m_cost + outgoing.m_cost, contracted_node, contracted_node);
-            m_contr_data[omp_get_thread_num()].m_shortcuts_bwd.push_back(
-                std::make_pair(outgoing.m_target, bwd_shortcut));
+            m_contr_data[thread_num].m_shortcuts_bwd.push_back(std::make_pair(outgoing.m_target, bwd_shortcut));
         }
 
         // reset contraction data
-        for (int& num : m_contr_data[omp_get_thread_num()].m_reset_visited)
-            m_contr_data[omp_get_thread_num()].m_visited[num] = false;
-        for (int& num : m_contr_data[omp_get_thread_num()].m_reset_distances)
-            m_contr_data[omp_get_thread_num()].m_distances[num] = std::numeric_limits<int>::max();
-        m_contr_data[omp_get_thread_num()].m_reset_visited.clear();
-        m_contr_data[omp_get_thread_num()].m_reset_distances.clear();
+        for (int& num : m_contr_data[thread_num].m_reset_visited) m_contr_data[thread_num].m_visited[num] = false;
+        for (int& num : m_contr_data[thread_num].m_reset_distances)
+            m_contr_data[thread_num].m_distances[num] = std::numeric_limits<int>::max();
+        m_contr_data[thread_num].m_reset_visited.clear();
+        m_contr_data[thread_num].m_reset_distances.clear();
     }
 
     // reset contraction data
-    for (int& num : m_contr_data[omp_get_thread_num()].m_reset_outgoing)
-        m_contr_data[omp_get_thread_num()].m_outgoing[num] = false;
-    m_contr_data[omp_get_thread_num()].m_reset_outgoing.clear();
+    for (int& num : m_contr_data[thread_num].m_reset_outgoing) m_contr_data[thread_num].m_outgoing[num] = false;
+    m_contr_data[thread_num].m_reset_outgoing.clear();
 }
 
 void Graph::contractionDijkstra(int start, int contracted_node, std::vector<bool>& contracted, int num_outgoing,
@@ -1497,28 +1497,29 @@ void Graph::contractionDijkstra(int start, int contracted_node, std::vector<bool
     std::priority_queue<std::pair<int, int>, std::vector<std::pair<int, int>>, std::greater<std::pair<int, int>>> pq;
 
     int num_visited_outgoing = 0;
-    m_contr_data[omp_get_thread_num()].m_distances[start] = 0;
-    m_contr_data[omp_get_thread_num()].m_reset_distances.push_back(start);
+    int thread_num = omp_get_thread_num();
+    m_contr_data[thread_num].m_distances[start] = 0;
+    m_contr_data[thread_num].m_reset_distances.push_back(start);
     pq.push(std::make_pair(0, start));
 
     while (!pq.empty()) {
         std::pair<int, int> cur_node = pq.top();
         pq.pop();
 
-        if (m_contr_data[omp_get_thread_num()].m_distances[cur_node.second] != cur_node.first) continue;
+        if (m_contr_data[thread_num].m_distances[cur_node.second] != cur_node.first) continue;
 
-        if (m_contr_data[omp_get_thread_num()].m_outgoing[cur_node.second]) ++num_visited_outgoing;
+        if (m_contr_data[thread_num].m_outgoing[cur_node.second]) ++num_visited_outgoing;
         if (cur_node.first > max_distance || num_visited_outgoing == num_outgoing) break;
 
         for (Edge& e : m_graph[cur_node.second]) {
             if (contracted[e.m_target]) continue;
-            if (m_contr_data[omp_get_thread_num()].m_distances[e.m_target] >
-                m_contr_data[omp_get_thread_num()].m_distances[cur_node.second] + e.m_cost) {
-                if (m_contr_data[omp_get_thread_num()].m_distances[e.m_target] == std::numeric_limits<int>::max())
-                    m_contr_data[omp_get_thread_num()].m_reset_distances.push_back(e.m_target);
-                m_contr_data[omp_get_thread_num()].m_distances[e.m_target] =
-                    m_contr_data[omp_get_thread_num()].m_distances[cur_node.second] + e.m_cost;
-                pq.push(std::make_pair(m_contr_data[omp_get_thread_num()].m_distances[e.m_target], e.m_target));
+            if (m_contr_data[thread_num].m_distances[e.m_target] >
+                m_contr_data[thread_num].m_distances[cur_node.second] + e.m_cost) {
+                if (m_contr_data[thread_num].m_distances[e.m_target] == std::numeric_limits<int>::max())
+                    m_contr_data[thread_num].m_reset_distances.push_back(e.m_target);
+                m_contr_data[thread_num].m_distances[e.m_target] =
+                    m_contr_data[thread_num].m_distances[cur_node.second] + e.m_cost;
+                pq.push(std::make_pair(m_contr_data[thread_num].m_distances[e.m_target], e.m_target));
             }
         }
     }

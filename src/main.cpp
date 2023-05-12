@@ -9,9 +9,9 @@ int main(int argc, char *argv[]) {
     // olsp::ReadMode::CONTRACTION_HIERACHIES);
 
     // don't prune graph when using advanced hub label creation
-    omp_set_num_threads(12);
-    olsp::Graph g("/home/helmut/Documents/BachelorArbeit/bachelorarbeit/data/stgtregbz.fmi", olsp::ReadMode::NORMAL,
-                  true, true, 12, olsp::DistanceMode::TRAVEL_TIME);
+    omp_set_num_threads(14);
+    olsp::Graph g("/home/helmut/Documents/BachelorArbeit/bachelorarbeit/data/germany.fmi", olsp::ReadMode::NORMAL, true,
+                  true, 14, olsp::DistanceMode::DISTANCE_METERS);
 
     // int dist = olsp::Graph::dijkstraQuery(g.getGraphVec(), 377371, 754742);
     // std::cout << "Distance: " << dist << std::endl;
@@ -30,11 +30,10 @@ int main(int argc, char *argv[]) {
         std::cout << bd_data.m_meeting_node << std::endl;
         // g.bidirectionalDijkstraGetPath(bd_data);
     }
-
     /*
         olsp::QueryData bd_data(377371, 754742, 0, false);
 
-        g.createHubLabels();
+        g.advancedCreateHubLabels();
         g.hubLabelQuery(bd_data);
         std::cout << "Distance: " << bd_data.m_distance << std::endl;
         std::cout << bd_data.m_meeting_node << std::endl;
@@ -52,6 +51,5 @@ int main(int argc, char *argv[]) {
         auto lower_bound = g.lowerBound(path_cover, threshold);
         std::cout << "Lower Bound Size: " << lower_bound.size();
     */
-
     return 0;
 }
