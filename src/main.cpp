@@ -7,8 +7,8 @@ int main(int argc, char *argv[]) {
     // olsp::ReadMode::CONTRACTION_HIERACHIES);
 
     // don't prune graph when using advanced hub label creation
-    olsp::Graph g("/home/helmut/Documents/BachelorArbeit/bachelorarbeit/data/stgtregbz_ch.fmi",
-                  olsp::ReadMode::CONTRACTION_HIERARCHY, true, false, olsp::DistanceMode::TRAVEL_TIME);
+    olsp::Graph g("/home/helmut/Documents/BachelorArbeit/bachelorarbeit/data/bw.fmi", olsp::ReadMode::NORMAL, true,
+                  true, olsp::DistanceMode::DISTANCE_METERS);
 
     // int dist = olsp::Graph::dijkstraQuery(g.getGraphVec(), 377371, 754742);
     // std::cout << "Distance: " << dist << std::endl;
@@ -30,7 +30,9 @@ int main(int argc, char *argv[]) {
 
     olsp::QueryData bd_data(377371, 754742, g.getNumNodes(), false);
 
-    g.advancedCreateHubLabels();
+    g.setNumThreads(14);
+
+    g.advancedCreateHubLabels(10);
     g.hubLabelQuery(bd_data);
     std::cout << "Distance: " << bd_data.m_distance << std::endl;
     std::cout << bd_data.m_meeting_node << std::endl;

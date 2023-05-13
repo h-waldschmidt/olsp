@@ -25,7 +25,7 @@ struct ContractionData {
     std::vector<int> m_reset_visited;
     std::vector<int> m_distances;
     std::vector<int> m_reset_distances;
-    std::vector<int> m_num_deleted_neighbours;
+    std::vector<int> m_num_contracted_neighbours;
 
     ContractionData(int num_nodes)
         : m_outgoing(num_nodes, false),
@@ -48,6 +48,7 @@ struct AdvancedHubLabelData {
           m_visited_bwd(num_nodes, false),
           m_distances_fwd(num_nodes, std::numeric_limits<int>::max()),
           m_distances_bwd(num_nodes, std::numeric_limits<int>::max()) {}
+    AdvancedHubLabelData() = default;
 };
 
 struct LowerBoundData {
@@ -128,7 +129,7 @@ class Graph {
 
     void createHubLabels();
 
-    void advancedCreateHubLabels();
+    void advancedCreateHubLabels(int num_partions);
     void forwardCHSearch(AdvancedHubLabelData& data, int start_node);
     void backwardCHSearch(AdvancedHubLabelData& data, int start_node);
 
@@ -146,9 +147,12 @@ class Graph {
 
     std::vector<std::vector<Edge>>& getGraphVec() { return m_graph; }
 
+    void setNumThreads(int num_threads) { m_num_threads = num_threads; }
+
    private:
     bool m_ch_available;  // ch = Contraction Hierarchy
     int m_num_nodes;
+    int m_num_threads = 1;
     std::vector<std::vector<Edge>> m_graph;
     std::vector<std::vector<Edge>> m_reverse_graph;
     std::vector<int> m_node_level;
@@ -175,8 +179,7 @@ class Graph {
 
     int deletedNeighboursHeuristic(std::vector<bool>& contracted, int node, std::vector<int>& num_deleted_neighbours);
 
-    int microsoftHeuristic(std::vector<bool>& contracted, int node, std::vector<int>& num_deleted_neighbours,
-                           int cur_level);
+    int microsoftHeuristic(std::vector<bool>& contracted, int node, int cur_level);
 
     void contractNode(std::vector<bool>& contracted, int contracted_node);
 
