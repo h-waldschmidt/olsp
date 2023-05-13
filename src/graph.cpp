@@ -480,8 +480,8 @@ void Graph::createHubLabels() {
         auto iter = find(different_levels_vec.begin(), different_levels_vec.end(), m_node_level[i]);
         level_buckets[iter - different_levels_vec.begin()].push_back(i);
     }
-    m_num_threads = 14;
-    omp_set_num_threads(14);
+
+    int num_calculated = 0;
 
     for (int i = 0; i < different_levels_vec.size(); ++i) {
 #pragma omp parallel for
@@ -562,8 +562,8 @@ void Graph::createHubLabels() {
                     ++iter;
             }
         }
-        std::cout << "Finished: " << level_buckets[i].size() << " num of nodes"
-                  << "\n";
+        num_calculated += level_buckets[i].size();
+        std::cout << "Finished Hub Labels for " << num_calculated << " num of nodes." << std::endl;
     }
 
     auto end = std::chrono::high_resolution_clock::now();
@@ -585,112 +585,132 @@ void Graph::advancedCreateHubLabels() {
     m_bwd_hub_labels.clear();
     m_bwd_hub_labels.resize(m_num_nodes);
 
-    AdvancedHubLabelData hub_label_data(m_num_nodes);
+    std::vector<AdvancedHubLabelData> hub_label_data(m_num_threads);
+    for (int i = 0; i < m_num_threads; ++i) {
+        hub_label_data[i] = AdvancedHubLabelData(m_num_nodes);
+    }
 
     // sort the levels, but don't change the original vector
-    std::vector<int> indices_sorted(m_num_nodes);
-    std::iota(indices_sorted.begin(), indices_sorted.end(), 0);
-    std::sort(indices_sorted.begin(), indices_sorted.end(),
-              [&](int i, int j) { return m_node_level[i] > m_node_level[j]; });
-
+    std::unordered_set<int> different_levels;
+    for (int i = 0; i < m_num_nodes; i++) {
+        different_levels.emplace(m_node_level[i]);
+    }
+    std::vector<int> different_levels_vec;
+    different_levels_vec.insert(different_levels_vec.end(), different_levels.begin(), different_levels.end());
+    std::sort(different_levels_vec.begin(), different_levels_vec.end(),
+              [](int& left, int& right) { return left > right; });
+    std::vector<std::vector<int>> level_buckets(different_levels_vec.size());
     for (int i = 0; i < m_num_nodes; ++i) {
-        int node = indices_sorted[i];
-        m_fwd_hub_labels[node].push_back(std::make_pair(node, 0));
-        m_bwd_hub_labels[node].push_back(std::make_pair(node, 0));
+        auto iter = find(different_levels_vec.begin(), different_levels_vec.end(), m_node_level[i]);
+        level_buckets[iter - different_levels_vec.begin()].push_back(i);
+    }
 
-        if (i == 0) continue;
+    int num_calculated = 0;
 
-        // fwd lables
-        // do forward search and pruning
-        forwardCHSearch(hub_label_data, node);
-        for (int j = 0; j < hub_label_data.m_reset_nodes_fwd.size(); ++j) {
-            if (hub_label_data.m_reset_nodes_fwd[j] == node) continue;
-            // if (m_node_level[node] >= m_node_level[hub_label_data.m_reset_nodes_fwd[j]]) continue;
-            bool should_be_added = true;
-            for (Edge& e : m_reverse_graph[hub_label_data.m_reset_nodes_fwd[j]]) {
-                // if (m_node_level[e.m_target] <= m_node_level[hub_label_data.m_reset_nodes_fwd[j]]) continue;
+    for (int i = 0; i < different_levels_vec.size(); ++i) {
+#pragma omp parallel for
+        for (int k = 0; k < level_buckets[i].size(); ++k) {
+            int node = level_buckets[i][k];
+            int thread_num = omp_get_thread_num();
 
-                if (hub_label_data.m_distances_fwd[e.m_target] + e.m_cost <
-                    hub_label_data.m_distances_fwd[hub_label_data.m_reset_nodes_fwd[j]]) {
-                    should_be_added = false;
-                    break;
+            m_fwd_hub_labels[node].push_back(std::make_pair(node, 0));
+            m_bwd_hub_labels[node].push_back(std::make_pair(node, 0));
+
+            if (i == 0) continue;
+
+            // fwd lables
+            // do forward search and pruning
+            forwardCHSearch(hub_label_data[thread_num], node);
+            for (int j = 0; j < hub_label_data[thread_num].m_reset_nodes_fwd.size(); ++j) {
+                if (hub_label_data[thread_num].m_reset_nodes_fwd[j] == node) continue;
+                // if (m_node_level[node] >= m_node_level[hub_label_data[thread_num].m_reset_nodes_fwd[j]]) continue;
+                bool should_be_added = true;
+                for (Edge& e : m_reverse_graph[hub_label_data[thread_num].m_reset_nodes_fwd[j]]) {
+                    // if (m_node_level[e.m_target] <= m_node_level[hub_label_data[thread_num].m_reset_nodes_fwd[j]])
+                    // continue;
+
+                    if (hub_label_data[thread_num].m_distances_fwd[e.m_target] + e.m_cost <
+                        hub_label_data[thread_num].m_distances_fwd[hub_label_data[thread_num].m_reset_nodes_fwd[j]]) {
+                        should_be_added = false;
+                        break;
+                    }
                 }
+
+                if (should_be_added)
+                    m_fwd_hub_labels[node].push_back(std::make_pair(
+                        hub_label_data[thread_num].m_reset_nodes_fwd[j],
+                        hub_label_data[thread_num].m_distances_fwd[hub_label_data[thread_num].m_reset_nodes_fwd[j]]));
             }
 
-            if (should_be_added)
-                m_fwd_hub_labels[node].push_back(
-                    std::make_pair(hub_label_data.m_reset_nodes_fwd[j],
-                                   hub_label_data.m_distances_fwd[hub_label_data.m_reset_nodes_fwd[j]]));
-        }
+            std::sort(m_fwd_hub_labels[node].begin(), m_fwd_hub_labels[node].end(),
+                      [](auto& left, auto& right) { return left.first < right.first; });
 
-        std::sort(m_fwd_hub_labels[node].begin(), m_fwd_hub_labels[node].end(),
-                  [](auto& left, auto& right) { return left.first < right.first; });
-        // bootstrapping
-        for (auto iter = m_fwd_hub_labels[node].begin(); iter != m_fwd_hub_labels[node].end();) {
-            int best_dist = std::numeric_limits<int>::max();
-            if (iter->first != node)
-                best_dist = simplifiedHubLabelQuery(m_fwd_hub_labels[node], m_bwd_hub_labels[iter->first]);
-            if (best_dist < iter->second)
-                iter = m_fwd_hub_labels[node].erase(iter);
-            else
-                ++iter;
-        }
-
-        // bwd labels
-        // do backward search and pruning
-        backwardCHSearch(hub_label_data, node);
-        for (int j = 0; j < hub_label_data.m_reset_nodes_bwd.size(); ++j) {
-            if (hub_label_data.m_reset_nodes_bwd[j] == node) continue;
-            // if (m_node_level[node] >= m_node_level[hub_label_data.m_reset_nodes_bwd[j]]) continue;
-
-            bool should_be_added = true;
-            for (Edge& e : m_graph[hub_label_data.m_reset_nodes_bwd[j]]) {
-                // if (m_node_level[e.m_target] <= m_node_level[hub_label_data.m_reset_nodes_bwd[j]]) continue;
-
-                if (hub_label_data.m_distances_bwd[e.m_target] + e.m_cost <
-                    hub_label_data.m_distances_bwd[hub_label_data.m_reset_nodes_bwd[j]]) {
-                    should_be_added = false;
-                    break;
-                }
+            // bootstrapping
+            for (auto iter = m_fwd_hub_labels[node].begin(); iter != m_fwd_hub_labels[node].end();) {
+                int best_dist = std::numeric_limits<int>::max();
+                if (iter->first != node)
+                    best_dist = simplifiedHubLabelQuery(m_fwd_hub_labels[node], m_bwd_hub_labels[iter->first]);
+                if (best_dist < iter->second)
+                    iter = m_fwd_hub_labels[node].erase(iter);
+                else
+                    ++iter;
             }
 
-            if (should_be_added)
-                m_bwd_hub_labels[node].push_back(
-                    std::make_pair(hub_label_data.m_reset_nodes_bwd[j],
-                                   hub_label_data.m_distances_bwd[hub_label_data.m_reset_nodes_bwd[j]]));
+            // bwd labels
+            // do backward search and pruning
+            backwardCHSearch(hub_label_data[thread_num], node);
+            for (int j = 0; j < hub_label_data[thread_num].m_reset_nodes_bwd.size(); ++j) {
+                if (hub_label_data[thread_num].m_reset_nodes_bwd[j] == node) continue;
+                // if (m_node_level[node] >= m_node_level[hub_label_data[thread_num].m_reset_nodes_bwd[j]]) continue;
+
+                bool should_be_added = true;
+                for (Edge& e : m_graph[hub_label_data[thread_num].m_reset_nodes_bwd[j]]) {
+                    // if (m_node_level[e.m_target] <= m_node_level[hub_label_data[thread_num].m_reset_nodes_bwd[j]])
+                    // continue;
+
+                    if (hub_label_data[thread_num].m_distances_bwd[e.m_target] + e.m_cost <
+                        hub_label_data[thread_num].m_distances_bwd[hub_label_data[thread_num].m_reset_nodes_bwd[j]]) {
+                        should_be_added = false;
+                        break;
+                    }
+                }
+
+                if (should_be_added)
+                    m_bwd_hub_labels[node].push_back(std::make_pair(
+                        hub_label_data[thread_num].m_reset_nodes_bwd[j],
+                        hub_label_data[thread_num].m_distances_bwd[hub_label_data[thread_num].m_reset_nodes_bwd[j]]));
+            }
+
+            std::sort(m_bwd_hub_labels[node].begin(), m_bwd_hub_labels[node].end(),
+                      [](auto& left, auto& right) { return left.first < right.first; });
+
+            // bootstrapping
+            for (auto iter = m_bwd_hub_labels[node].begin(); iter != m_bwd_hub_labels[node].end();) {
+                int best_dist = std::numeric_limits<int>::max();
+                if (iter->first != node)
+                    best_dist = simplifiedHubLabelQuery(m_fwd_hub_labels[iter->first], m_bwd_hub_labels[node]);
+                if (best_dist < iter->second)
+                    iter = m_bwd_hub_labels[node].erase(iter);
+                else
+                    ++iter;
+            }
+
+            // reset data for next run
+            for (int& index : hub_label_data[thread_num].m_reset_nodes_fwd) {
+                hub_label_data[thread_num].m_distances_fwd[index] = std::numeric_limits<int>::max();
+                hub_label_data[thread_num].m_visited_fwd[index] = false;
+            }
+            hub_label_data[thread_num].m_reset_nodes_fwd.clear();
+
+            for (int& index : hub_label_data[thread_num].m_reset_nodes_bwd) {
+                hub_label_data[thread_num].m_distances_bwd[index] = std::numeric_limits<int>::max();
+                hub_label_data[thread_num].m_visited_bwd[index] = false;
+            }
+            hub_label_data[thread_num].m_reset_nodes_bwd.clear();
         }
 
-        std::sort(m_bwd_hub_labels[node].begin(), m_bwd_hub_labels[node].end(),
-                  [](auto& left, auto& right) { return left.first < right.first; });
-
-        // bootstrapping
-        for (auto iter = m_bwd_hub_labels[node].begin(); iter != m_bwd_hub_labels[node].end();) {
-            int best_dist = std::numeric_limits<int>::max();
-            if (iter->first != node)
-                best_dist = simplifiedHubLabelQuery(m_fwd_hub_labels[iter->first], m_bwd_hub_labels[node]);
-            if (best_dist < iter->second)
-                iter = m_bwd_hub_labels[node].erase(iter);
-            else
-                ++iter;
-        }
-
-        auto fwd_labels = m_fwd_hub_labels[node];
-        auto bwd_labels = m_bwd_hub_labels[node];
-
-        // reset data for next run
-        for (int& index : hub_label_data.m_reset_nodes_fwd) {
-            hub_label_data.m_distances_fwd[index] = std::numeric_limits<int>::max();
-            hub_label_data.m_visited_fwd[index] = false;
-        }
-        hub_label_data.m_reset_nodes_fwd.clear();
-
-        for (int& index : hub_label_data.m_reset_nodes_bwd) {
-            hub_label_data.m_distances_bwd[index] = std::numeric_limits<int>::max();
-            hub_label_data.m_visited_bwd[index] = false;
-        }
-        hub_label_data.m_reset_nodes_bwd.clear();
-
-        std::cout << "Finished: " << i << "\n";
+        num_calculated += level_buckets[i].size();
+        std::cout << "Finished Hub Labels for " << num_calculated << " num of nodes." << std::endl;
     }
 
     auto end = std::chrono::high_resolution_clock::now();
@@ -1023,6 +1043,7 @@ void Graph::createCH() {
     m_contr_data.resize(m_num_threads);
     for (int i = 0; i < m_num_threads; ++i) {
         m_contr_data[i] = ContractionData(m_num_nodes);
+        m_contr_data[i].m_num_contracted_neighbours.resize(m_num_nodes);
     }
 
     // std::vector<int> longest_path_fwd(m_num_nodes, 0);
@@ -1092,13 +1113,19 @@ void Graph::createCH() {
 
             m_contr_data[i].m_shortcuts_fwd.clear();
             m_contr_data[i].m_shortcuts_bwd.clear();
+
+            if (i == 0) continue;
+
+            for (int j = 0; j < m_num_nodes; ++j) {
+                m_contr_data[0].m_num_contracted_neighbours[j] += m_contr_data[i].m_num_contracted_neighbours[j];
+                m_contr_data[i].m_num_contracted_neighbours[j] = 0;
+            }
         }
 
         num_contracted += static_cast<int>(independent_set.size());
 
         if (num_contracted >= m_num_nodes * 0.8) {
             omp_set_num_threads(1);
-            m_num_threads = 1;
         }
 
         ++cur_level;
@@ -1106,6 +1133,7 @@ void Graph::createCH() {
     }
 
     m_contr_data.clear();
+    omp_set_num_threads(m_num_threads);
 
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(end - begin);
@@ -1404,6 +1432,8 @@ int Graph::microsoftHeuristic(std::vector<bool>& contracted, int node, int cur_l
         m_contr_data[0].m_outgoing[outgoing.m_target] = true;
     }
 
+    int underlying_shortcuts = 0;
+
     for (auto& incoming : m_reverse_graph[node]) {
         if (contracted[incoming.m_target]) {
             if (m_node_level[incoming.m_target] > max_neighbour_level)
@@ -1425,6 +1455,9 @@ int Graph::microsoftHeuristic(std::vector<bool>& contracted, int node, int cur_l
 
             m_contr_data[0].m_visited[outgoing.m_target] = true;
             m_contr_data[0].m_reset_visited.push_back(outgoing.m_target);
+
+            if (incoming.m_child_1 != -1) underlying_shortcuts += incoming.m_child_1;
+            if (outgoing.m_child_1 != -1) underlying_shortcuts += outgoing.m_child_1;
 
             ++num_added_shortcuts;
 
@@ -1448,7 +1481,8 @@ int Graph::microsoftHeuristic(std::vector<bool>& contracted, int node, int cur_l
     else
         ++max_neighbour_level;
 
-    return 0.01 * max_cost + 2 * (num_added_shortcuts - (num_incomming + num_outgoing)) + 5 * max_neighbour_level;
+    return 0.001 * max_cost + m_contr_data[0].m_num_contracted_neighbours[node] + 1 * underlying_shortcuts +
+           2 * (num_added_shortcuts - (num_incomming + num_outgoing)) + 5 * max_neighbour_level;
 }
 
 void Graph::contractNode(std::vector<bool>& contracted, int contracted_node) {
@@ -1482,9 +1516,13 @@ void Graph::contractNode(std::vector<bool>& contracted, int contracted_node) {
             m_contr_data[thread_num].m_reset_visited.push_back(outgoing.m_target);
 
             // add shortcut
-            Edge fwd_shortcut(outgoing.m_target, incoming.m_cost + outgoing.m_cost, contracted_node, contracted_node);
+            int underlying_arcs = 0;
+            if (incoming.m_child_1 != -1) underlying_arcs += incoming.m_child_1;
+            if (outgoing.m_child_1 != -1) underlying_arcs += outgoing.m_child_1;
+
+            Edge fwd_shortcut(outgoing.m_target, incoming.m_cost + outgoing.m_cost, underlying_arcs, -1);
             m_contr_data[thread_num].m_shortcuts_fwd.push_back(std::make_pair(incoming.m_target, fwd_shortcut));
-            Edge bwd_shortcut(incoming.m_target, incoming.m_cost + outgoing.m_cost, contracted_node, contracted_node);
+            Edge bwd_shortcut(incoming.m_target, incoming.m_cost + outgoing.m_cost, underlying_arcs, -1);
             m_contr_data[thread_num].m_shortcuts_bwd.push_back(std::make_pair(outgoing.m_target, bwd_shortcut));
         }
 

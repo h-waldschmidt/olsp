@@ -28,6 +28,8 @@ struct ContractionData {
     std::vector<std::pair<int, Edge>> m_shortcuts_fwd;
     std::vector<std::pair<int, Edge>> m_shortcuts_bwd;
 
+    std::vector<int> m_num_contracted_neighbours;
+
     ContractionData(int num_nodes)
         : m_outgoing(num_nodes, false),
           m_visited(num_nodes, false),
@@ -49,6 +51,7 @@ struct AdvancedHubLabelData {
           m_visited_bwd(num_nodes, false),
           m_distances_fwd(num_nodes, std::numeric_limits<int>::max()),
           m_distances_bwd(num_nodes, std::numeric_limits<int>::max()) {}
+    AdvancedHubLabelData() = default;
 };
 
 struct LowerBoundData {
