@@ -899,7 +899,8 @@ std::vector<int> Graph::lowerBound(std::vector<int>& shortest_path_cover, int th
         // 1. first find all end nodes with path longer than threshold
         std::vector<int> end_nodes;
         for (int i = 0; i < lb_data.m_distances.size(); ++i) {
-            if (lb_data.m_distances[i] < std::numeric_limits<int>::max() && lb_data.m_distances[i] >= threshold)
+            if (lb_data.m_distances[i] < std::numeric_limits<int>::max() && lb_data.m_distances[i] < 2 * threshold &&
+                lb_data.m_distances[i] >= threshold)
                 end_nodes.push_back(i);
             lb_data.m_distances[i] = std::numeric_limits<int>::max();
         }
@@ -1512,10 +1513,10 @@ void Graph::lowerBoundDijkstra(LowerBoundData& lb_data) {
 
         if (lb_data.m_distances[cur_node.second] != cur_node.first) continue;
 
-        if (cur_node.first > lb_data.m_threshold) break;
+        if (cur_node.first > lb_data.m_threshold * 2) break;
 
         for (Edge& e : m_graph[cur_node.second]) {
-            if (lb_data.m_marked[e.m_target]) continue;  // TODO: passt das?
+            // if (lb_data.m_marked[e.m_target]) continue;  // TODO: passt das?
             if (lb_data.m_distances[e.m_target] > lb_data.m_distances[cur_node.second] + e.m_cost) {
                 if (lb_data.m_distances[e.m_target] == std::numeric_limits<int>::max())
                     lb_data.m_reset_previous_node.push_back(e.m_target);
