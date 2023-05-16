@@ -9,9 +9,8 @@ int main(int argc, char *argv[]) {
     // olsp::ReadMode::CONTRACTION_HIERACHIES);
 
     // don't prune graph when using advanced hub label creation
-    omp_set_num_threads(14);
-    olsp::Graph g("/home/helmut/Documents/BachelorArbeit/bachelorarbeit/data/bw.fmi", olsp::ReadMode::NORMAL, true,
-                  true, 14, olsp::DistanceMode::DISTANCE_METERS);
+    omp_set_num_threads(1);
+    olsp::Graph g("data/germany.fmi", olsp::ReadMode::NORMAL, true, true, 4, olsp::DistanceMode::TRAVEL_TIME);
 
     // int dist = olsp::Graph::dijkstraQuery(g.getGraphVec(), 377371, 754742);
     // std::cout << "Distance: " << dist << std::endl;
@@ -41,7 +40,7 @@ int main(int argc, char *argv[]) {
     std::cout << "Average Label size: " << g.averageLabelSize() << std::endl;
     std::cout << "Max Label size: " << g.maxLabelSize() << std::endl;
 
-    int threshold = 125000;
+    int threshold = 40000;
     std::cout << "Num Labels with weight between: " << threshold / 2 << " and " << threshold << " : "
               << g.numHubLabelsInRange(threshold / 2, threshold) << std::endl;
 

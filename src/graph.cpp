@@ -1495,6 +1495,8 @@ void Graph::contractNode(std::vector<bool>& contracted, int contracted_node) {
         if (contracted[outgoing.m_target]) continue;
         if (outgoing.m_cost > max_distance_out) max_distance_out = outgoing.m_cost;
 
+        ++m_contr_data[thread_num].m_num_contracted_neighbours[outgoing.m_target];
+
         ++num_outgoing;
         m_contr_data[thread_num].m_reset_outgoing.push_back(outgoing.m_target);
         m_contr_data[thread_num].m_outgoing[outgoing.m_target] = true;
@@ -1503,6 +1505,8 @@ void Graph::contractNode(std::vector<bool>& contracted, int contracted_node) {
     for (auto& incoming : m_reverse_graph[contracted_node]) {
         if (contracted[incoming.m_target]) continue;
         int max_distance = incoming.m_cost + max_distance_out;
+
+        ++m_contr_data[thread_num].m_num_contracted_neighbours[incoming.m_target];
 
         contractionDijkstra(incoming.m_target, contracted_node, contracted, num_outgoing, max_distance);
 
