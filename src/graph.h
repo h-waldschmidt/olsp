@@ -130,9 +130,9 @@ class Graph {
 
     void contractionHierachyQuery(QueryData& data);
 
-    void createHubLabels();
+    void createHubLabels(int threshold = std::numeric_limits<int>::max());
 
-    void advancedCreateHubLabels();
+    void advancedCreateHubLabels(int threshold = std::numeric_limits<int>::max());
     void forwardCHSearch(AdvancedHubLabelData& data, int start_node);
     void backwardCHSearch(AdvancedHubLabelData& data, int start_node);
 

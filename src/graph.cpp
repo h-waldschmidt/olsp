@@ -78,7 +78,7 @@ void Graph::readGraph(const std::string& path, ReadMode read_mode, DistanceMode 
             // skip unused fields
             getline(ss, s, ' ');
             getline(ss, s, ' ');
-            m_osm_ids[i] = std::stoi(s);
+            m_osm_ids[i] = std::stoul(s);
 
             if (dist_mode == DistanceMode::DISTANCE_METERS) {
                 std::pair<double, double> coords;
@@ -463,7 +463,7 @@ void Graph::contractionHierachyQuery(QueryData& data) {
     // std::cout << "Finished CH Query. Took " << elapsed.count() << " microseconds " << std::endl;
 }
 
-void Graph::createHubLabels() {
+void Graph::createHubLabels(int threshold) {
     std::cout << "Started creating hub labels." << std::endl;
     auto begin = std::chrono::high_resolution_clock::now();
 
@@ -508,7 +508,8 @@ void Graph::createHubLabels() {
                 if (m_node_level[node] >= m_node_level[e.m_target]) continue;
 
                 for (std::pair<int, int>& hub : m_fwd_hub_labels[e.m_target])
-                    m_fwd_hub_labels[node].push_back(std::make_pair(hub.first, hub.second + e.m_cost));
+                    if (hub.second + e.m_cost <= threshold)
+                        m_fwd_hub_labels[node].push_back(std::make_pair(hub.first, hub.second + e.m_cost));
             }
 
             // remove duplicates
@@ -543,7 +544,8 @@ void Graph::createHubLabels() {
                 if (m_node_level[node] >= m_node_level[e.m_target]) continue;
 
                 for (std::pair<int, int>& hub : m_bwd_hub_labels[e.m_target])
-                    m_bwd_hub_labels[node].push_back(std::make_pair(hub.first, hub.second + e.m_cost));
+                    if (hub.second + e.m_cost <= threshold)
+                        m_bwd_hub_labels[node].push_back(std::make_pair(hub.first, hub.second + e.m_cost));
             }
 
             // remove duplicates
@@ -582,7 +584,7 @@ void Graph::createHubLabels() {
     std::cout << "Finished creating hub labels. Took " << elapsed.count() << " milliseconds " << std::endl;
 }
 
-void Graph::advancedCreateHubLabels() {
+void Graph::advancedCreateHubLabels(int threshold) {
     std::cout << "Started creating hub labels." << std::endl;
     auto begin = std::chrono::high_resolution_clock::now();
 
@@ -647,7 +649,9 @@ void Graph::advancedCreateHubLabels() {
                     }
                 }
 
-                if (should_be_added)
+                if (should_be_added &&
+                    hub_label_data[thread_num].m_distances_fwd[hub_label_data[thread_num].m_reset_nodes_fwd[j]] <=
+                        threshold)
                     m_fwd_hub_labels[node].push_back(std::make_pair(
                         hub_label_data[thread_num].m_reset_nodes_fwd[j],
                         hub_label_data[thread_num].m_distances_fwd[hub_label_data[thread_num].m_reset_nodes_fwd[j]]));
@@ -686,7 +690,9 @@ void Graph::advancedCreateHubLabels() {
                     }
                 }
 
-                if (should_be_added)
+                if (should_be_added &&
+                    hub_label_data[thread_num].m_distances_bwd[hub_label_data[thread_num].m_reset_nodes_bwd[j]] <=
+                        threshold)
                     m_bwd_hub_labels[node].push_back(std::make_pair(
                         hub_label_data[thread_num].m_reset_nodes_bwd[j],
                         hub_label_data[thread_num].m_distances_bwd[hub_label_data[thread_num].m_reset_nodes_bwd[j]]));
