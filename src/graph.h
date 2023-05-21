@@ -152,6 +152,8 @@ class Graph {
 
     void setNumThreads(int num_of_threads) { m_num_threads = num_of_threads; }
 
+    void writeNodeLevelsToFile(std::string& file_name);
+
    private:
     bool m_ch_available;  // ch = Contraction Hierarchy
     int m_num_nodes;
@@ -159,6 +161,7 @@ class Graph {
     std::vector<std::vector<Edge>> m_graph;
     std::vector<std::vector<Edge>> m_reverse_graph;
     std::vector<int> m_node_level;
+    std::vector<unsigned long> m_osm_ids;
     std::vector<ContractionData> m_contr_data;
     std::vector<std::vector<std::pair<int, int>>> m_fwd_hub_labels;
     std::vector<std::vector<std::pair<int, int>>> m_bwd_hub_labels;

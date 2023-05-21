@@ -8,9 +8,9 @@ int main(int argc, char *argv[]) {
     // olsp::Graph g("/Users/helmut/Documents/BachelorArbeit/bachelorarbeit/data/stgtregbz_ch.fmi",
     // olsp::ReadMode::CONTRACTION_HIERACHIES);
 
-    // don't prune graph when using advanced hub label creation
-    omp_set_num_threads(1);
-    olsp::Graph g("data/germany.fmi", olsp::ReadMode::NORMAL, true, true, 4, olsp::DistanceMode::TRAVEL_TIME);
+    omp_set_num_threads(14);
+    olsp::Graph g("/home/helmut/Documents/BachelorArbeit/bachelorarbeit/data/bw.fmi", olsp::ReadMode::NORMAL, true,
+                  true, 14, olsp::DistanceMode::TRAVEL_TIME);
 
     // int dist = olsp::Graph::dijkstraQuery(g.getGraphVec(), 377371, 754742);
     // std::cout << "Distance: " << dist << std::endl;
@@ -30,7 +30,10 @@ int main(int argc, char *argv[]) {
         // g.bidirectionalDijkstraGetPath(bd_data);
     }
 
-    olsp::QueryData bd_data(377371, 754742, 0, false);
+    olsp::QueryData bd_data(377380, 754751, 0, false);
+
+    // std::string file = "node_levels2.txt";
+    // g.writeNodeLevelsToFile(file);
 
     g.advancedCreateHubLabels();
     g.hubLabelQuery(bd_data);

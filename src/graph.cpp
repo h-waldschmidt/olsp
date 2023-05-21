@@ -61,6 +61,9 @@ void Graph::readGraph(const std::string& path, ReadMode read_mode, DistanceMode 
     m_node_level.clear();
     std::vector<std::pair<double, double>> node_coords;
 
+    m_osm_ids.clear();
+    m_osm_ids.resize(num_nodes);
+
     // save node rank if CH Mode, else skip the node information
     // or save coords if distances in meters are required
     if (read_mode == ReadMode::CONTRACTION_HIERARCHY || dist_mode == DistanceMode::DISTANCE_METERS) {
@@ -75,6 +78,7 @@ void Graph::readGraph(const std::string& path, ReadMode read_mode, DistanceMode 
             // skip unused fields
             getline(ss, s, ' ');
             getline(ss, s, ' ');
+            m_osm_ids[i] = std::stoi(s);
 
             if (dist_mode == DistanceMode::DISTANCE_METERS) {
                 std::pair<double, double> coords;
@@ -95,7 +99,14 @@ void Graph::readGraph(const std::string& path, ReadMode read_mode, DistanceMode 
             }
         }
     } else {
-        for (int i = 0; i < num_nodes; ++i) getline(infile, line);
+        for (int i = 0; i < num_nodes; ++i) {
+            getline(infile, line);
+            std::stringstream ss(line);
+            std::string s;
+            getline(ss, s, ' ');
+            getline(ss, s, ' ');
+            m_osm_ids[i] = std::stoul(s);
+        }
     }
 
     m_graph.clear();
@@ -963,6 +974,16 @@ std::vector<int> Graph::lowerBound(std::vector<int>& shortest_path_cover, int th
     std::cout << "Finished calculating Lower Bound. Took " << elapsed.count() << " seconds" << std::endl;
 
     return lower_bound;
+}
+
+void Graph::writeNodeLevelsToFile(std::string& file_name) {
+    std::ofstream file(file_name);
+
+    for (int i = 0; i < m_num_nodes; ++i) {
+        file << m_node_level[i] << "\n";
+    }
+
+    file.close();
 }
 
 void Graph::createReverseGraphNormal() {
