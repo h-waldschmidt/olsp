@@ -127,9 +127,9 @@ class Graph {
 
     void contractionHierachyQuery(QueryData& data);
 
-    void createHubLabels();
+    void createHubLabels(int threshold = std::numeric_limits<int>::max());
 
-    void advancedCreateHubLabels(int num_partions);
+    void advancedCreateHubLabels(int num_partions, int threshold = std::numeric_limits<int>::max());
     void forwardCHSearch(AdvancedHubLabelData& data, int start_node);
     void backwardCHSearch(AdvancedHubLabelData& data, int start_node);
 
@@ -148,6 +148,8 @@ class Graph {
     std::vector<std::vector<Edge>>& getGraphVec() { return m_graph; }
 
     void setNumThreads(int num_threads) { m_num_threads = num_threads; }
+
+    void writeNodeLevelsToFile(std::string& file_name);
 
    private:
     bool m_ch_available;  // ch = Contraction Hierarchy
