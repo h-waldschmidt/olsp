@@ -985,8 +985,13 @@ std::vector<int> Graph::lowerBound(std::vector<int>& shortest_path_cover, int th
 void Graph::writeNodeLevelsToFile(std::string& file_name) {
     std::ofstream file(file_name);
 
+    std::vector<int> indices_sorted(m_num_nodes);
+    std::iota(indices_sorted.begin(), indices_sorted.end(), 0);
+    std::sort(indices_sorted.begin(), indices_sorted.end(),
+              [&](int i, int j) { return m_node_level[i] < m_node_level[j]; });
+
     for (int i = 0; i < m_num_nodes; ++i) {
-        file << m_node_level[i] << "\n";
+        file << m_osm_ids[indices_sorted[i]] << "\n";
     }
 
     file.close();

@@ -9,8 +9,8 @@ int main(int argc, char *argv[]) {
     // olsp::ReadMode::CONTRACTION_HIERACHIES);
 
     omp_set_num_threads(14);
-    olsp::Graph g("/home/helmut/Documents/BachelorArbeit/bachelorarbeit/data/germany.fmi", olsp::ReadMode::NORMAL, true,
-                  true, 14, olsp::DistanceMode::DISTANCE_METERS);
+    olsp::Graph g("/home/helmut/Documents/BachelorArbeit/bachelorarbeit/data/stgtregbz.fmi", olsp::ReadMode::NORMAL,
+                  true, true, 14, olsp::DistanceMode::TRAVEL_TIME);
 
     // int dist = olsp::Graph::dijkstraQuery(g.getGraphVec(), 377371, 754742);
     // std::cout << "Distance: " << dist << std::endl;
@@ -30,13 +30,13 @@ int main(int argc, char *argv[]) {
         // g.bidirectionalDijkstraGetPath(bd_data);
     }
 
-    olsp::QueryData bd_data(377380, 754751, 0, false);
+    olsp::QueryData bd_data(377380, 754750, 0, false);
 
-    // std::string file = "node_levels2.txt";
-    // g.writeNodeLevelsToFile(file);
+    std::string file = "osm_levels1.txt";
+    g.writeNodeLevelsToFile(file);
     int threshold = 125000;
 
-    g.advancedCreateHubLabels(threshold);
+    g.createHubLabels();
     g.hubLabelQuery(bd_data);
     std::cout << "Distance: " << bd_data.m_distance << std::endl;
     std::cout << bd_data.m_meeting_node << std::endl;
