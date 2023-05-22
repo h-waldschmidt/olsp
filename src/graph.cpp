@@ -60,6 +60,9 @@ void Graph::readGraph(const std::string& path, ReadMode read_mode, DistanceMode 
     m_node_level.clear();
     std::vector<std::pair<double, double>> node_coords;
 
+    m_osm_ids.clear();
+    m_osm_ids.resize(num_nodes);
+
     // save node rank if CH Mode, else skip the node information
     // or save coords if distances in meters are required
     if (read_mode == ReadMode::CONTRACTION_HIERARCHY || dist_mode == DistanceMode::DISTANCE_METERS) {
@@ -74,6 +77,7 @@ void Graph::readGraph(const std::string& path, ReadMode read_mode, DistanceMode 
             // skip unused fields
             getline(ss, s, ' ');
             getline(ss, s, ' ');
+            m_osm_ids[i] = std::stoul(s);
 
             if (dist_mode == DistanceMode::DISTANCE_METERS) {
                 std::pair<double, double> coords;
@@ -94,7 +98,14 @@ void Graph::readGraph(const std::string& path, ReadMode read_mode, DistanceMode 
             }
         }
     } else {
-        for (int i = 0; i < num_nodes; ++i) getline(infile, line);
+        for (int i = 0; i < num_nodes; ++i) {
+            getline(infile, line);
+            std::stringstream ss(line);
+            std::string s;
+            getline(ss, s, ' ');
+            getline(ss, s, ' ');
+            m_osm_ids[i] = std::stoul(s);
+        }
     }
 
     m_graph.clear();
@@ -966,6 +977,31 @@ void Graph::writeNodeLevelsToFile(std::string& file_name) {
     }
 
     file.close();
+}
+
+void Graph::readOSMLevels(std::string& file_name) {
+    std::ifstream infile;
+    try {
+        infile.open(file_name);
+        if (!infile.good()) throw std::runtime_error("File doesn't exist!");
+    } catch (const std::exception& e) {
+        std::cerr << e.what() << '\n';
+        exit(1);
+    }
+
+    m_node_level.clear();
+    m_node_level.resize(m_num_nodes);
+
+    std::string line;
+    for (int i = 0; i < m_num_nodes; i++) {
+        getline(infile, line);
+        unsigned long osm_id = std::stoul(line);
+        auto iter = std::find(m_osm_ids.begin(), m_osm_ids.end(), osm_id);
+
+        m_node_level[iter - m_osm_ids.begin()] = i;
+        // std::cout << "Finished: " << i << "\n";
+    }
+    infile.close();
 }
 
 void Graph::createReverseGraphNormal() {

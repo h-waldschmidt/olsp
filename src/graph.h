@@ -151,10 +151,13 @@ class Graph {
 
     void writeNodeLevelsToFile(std::string& file_name);
 
+    void readOSMLevels(std::string& file_name);
+
    private:
     bool m_ch_available;  // ch = Contraction Hierarchy
     int m_num_nodes;
     int m_num_threads = 1;
+    std::vector<unsigned long> m_osm_ids;
     std::vector<std::vector<Edge>> m_graph;
     std::vector<std::vector<Edge>> m_reverse_graph;
     std::vector<int> m_node_level;
