@@ -866,13 +866,17 @@ std::vector<int> Graph::createShortestPathCover(int threshold) {
     std::unordered_set<int> path_cover_set;
     for (auto& fwd_labels : m_fwd_hub_labels) {
         for (auto& fwd_label : fwd_labels) {
-            if (fwd_label.second > threshold / 2 && fwd_label.second < threshold)
+            if (fwd_label.second >
+                    static_cast<double>(threshold) * (static_cast<double>(5) / static_cast<double>(10)) &&
+                fwd_label.second < threshold)
                 path_cover_set.emplace(fwd_label.first);
         }
     }
     for (auto& bwd_labels : m_bwd_hub_labels) {
         for (auto& bwd_label : bwd_labels) {
-            if (bwd_label.second > threshold / 2 && bwd_label.second < threshold)
+            if (bwd_label.second >
+                    static_cast<double>(threshold) * (static_cast<double>(5) / static_cast<double>(10)) &&
+                bwd_label.second < threshold)
                 path_cover_set.emplace(bwd_label.first);
         }
     }
@@ -888,8 +892,154 @@ std::vector<int> Graph::createShortestPathCover(int threshold) {
     return path_cover_vec;
 }
 
+bool Graph::verifyShortestPathCover(std::vector<int>& shortest_path_cover, int threshold) {
+    // TODO:
+    std::cout << "Started verifiying path cover." << std::endl;
+    auto begin = std::chrono::high_resolution_clock::now();
+
+    LowerBoundData lb_data(m_num_nodes);
+    lb_data.m_threshold = threshold;
+
+    for (int& node : shortest_path_cover) lb_data.m_marked[node] = true;
+
+    for (int i = 0; i < m_num_nodes; ++i) {
+        lb_data.m_start_node = i;
+        bool covered = pathCoverVerificationDijkstra(lb_data);
+        if (!covered) return false;
+
+        // reset data for next run
+        for (int& node : lb_data.m_reset_previous_node) {
+            lb_data.m_distances[node] = std::numeric_limits<int>::max();
+        }
+        lb_data.m_reset_previous_node.clear();
+
+        if (i % 10000 == 0) {
+            std::cout << "Finished " << i << "\n";
+        }
+    }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(end - begin);
+    std::cout << "Finished verifying path cover. Took " << elapsed.count() << " seconds" << std::endl;
+    return true;
+}
+
+std::vector<int> Graph::reducePathCover(std::vector<int>& path_cover, int threshold) {
+    // TODO:
+    std::cout << "Started reducing path cover." << std::endl;
+    auto begin = std::chrono::high_resolution_clock::now();
+
+    std::vector<int> new_path_cover;
+
+    LowerBoundData lb_data(m_num_nodes);
+    lb_data.m_threshold = threshold;
+
+    for (int& node : path_cover) lb_data.m_marked[node] = true;
+
+    for (int& node : path_cover) {
+        lb_data.m_start_node = node;
+        bool forward = forwardDijkstraSearch(lb_data);
+        // reset data for next run
+        for (int& node : lb_data.m_reset_previous_node) {
+            lb_data.m_distances[node] = std::numeric_limits<int>::max();
+        }
+        lb_data.m_reset_previous_node.clear();
+
+        bool backward = backwardDijkstraSearch(lb_data);
+        // reset data for next run
+        for (int& node : lb_data.m_reset_previous_node) {
+            lb_data.m_distances[node] = std::numeric_limits<int>::max();
+        }
+        lb_data.m_reset_previous_node.clear();
+
+        if (!forward && !backward)
+            lb_data.m_marked[node] = false;
+        else
+            new_path_cover.push_back(node);
+    }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(end - begin);
+    std::cout << "Finished reducing path cover. Took " << elapsed.count() << " seconds" << std::endl;
+    return new_path_cover;
+}
+
+bool Graph::forwardDijkstraSearch(LowerBoundData& lb_data) {
+    // TODO:
+    std::priority_queue<std::pair<int, int>, std::vector<std::pair<int, int>>, std::greater<std::pair<int, int>>> pq;
+
+    lb_data.m_distances[lb_data.m_start_node] = 0;
+    lb_data.m_reset_previous_node.push_back(lb_data.m_start_node);
+    pq.push(std::make_pair(0, lb_data.m_start_node));
+
+    while (!pq.empty()) {
+        std::pair<int, int> cur_node = pq.top();
+        pq.pop();
+
+        if (lb_data.m_distances[cur_node.second] != cur_node.first) continue;
+
+        if (cur_node.second != lb_data.m_start_node && lb_data.m_marked[cur_node.second]) return false;
+
+        if (static_cast<double>(cur_node.first) > static_cast<double>(lb_data.m_threshold) * 0.6) break;
+
+        for (Edge& e : m_graph[cur_node.second]) {
+            if (lb_data.m_distances[e.m_target] > lb_data.m_distances[cur_node.second] + e.m_cost) {
+                if (lb_data.m_distances[e.m_target] == std::numeric_limits<int>::max())
+                    lb_data.m_reset_previous_node.push_back(e.m_target);
+                lb_data.m_distances[e.m_target] = lb_data.m_distances[cur_node.second] + e.m_cost;
+                lb_data.m_previous_node[e.m_target] = cur_node.second;
+                pq.push(std::make_pair(lb_data.m_distances[e.m_target], e.m_target));
+            }
+        }
+    }
+
+    return true;
+}
+
+bool Graph::backwardDijkstraSearch(LowerBoundData& lb_data) {
+    // TODO:
+    std::priority_queue<std::pair<int, int>, std::vector<std::pair<int, int>>, std::greater<std::pair<int, int>>> pq;
+
+    lb_data.m_distances[lb_data.m_start_node] = 0;
+    lb_data.m_reset_previous_node.push_back(lb_data.m_start_node);
+    pq.push(std::make_pair(0, lb_data.m_start_node));
+
+    while (!pq.empty()) {
+        std::pair<int, int> cur_node = pq.top();
+        pq.pop();
+
+        if (lb_data.m_distances[cur_node.second] != cur_node.first) continue;
+
+        if (cur_node.second != lb_data.m_start_node && lb_data.m_marked[cur_node.second]) return false;
+
+        if (static_cast<double>(cur_node.first) > static_cast<double>(lb_data.m_threshold) * 0.6) break;
+
+        for (Edge& e : m_reverse_graph[cur_node.second]) {
+            if (lb_data.m_distances[e.m_target] > lb_data.m_distances[cur_node.second] + e.m_cost) {
+                if (lb_data.m_distances[e.m_target] == std::numeric_limits<int>::max())
+                    lb_data.m_reset_previous_node.push_back(e.m_target);
+                lb_data.m_distances[e.m_target] = lb_data.m_distances[cur_node.second] + e.m_cost;
+                lb_data.m_previous_node[e.m_target] = cur_node.second;
+                pq.push(std::make_pair(lb_data.m_distances[e.m_target], e.m_target));
+            }
+        }
+    }
+
+    return true;
+}
+
+std::vector<int> intersection(std::vector<int> v1, std::vector<int> v2) {
+    std::vector<int> v3;
+
+    std::sort(v1.begin(), v1.end());
+    std::sort(v2.begin(), v2.end());
+
+    std::set_intersection(v1.begin(), v1.end(), v2.begin(), v2.end(), back_inserter(v3));
+    return v3;
+}
+
 std::vector<int> Graph::lowerBound(std::vector<int>& shortest_path_cover, int threshold) {
-    std::cout << "Started creating Path Cover." << std::endl;
+    std::cout << "Started calculating Lower Bound." << std::endl;
     auto begin = std::chrono::high_resolution_clock::now();
 
     LowerBoundData lb_data(m_num_nodes);
@@ -903,11 +1053,19 @@ std::vector<int> Graph::lowerBound(std::vector<int>& shortest_path_cover, int th
     int spc_nodes_covered = 0;  // spc = shortest path cover
     std::vector<bool> spc_node_covered(shortest_path_cover.size(), false);
     std::vector<int> lower_bound;
+
+    std::vector<std::vector<int>> shortest_paths_backwards;
+
     while (spc_nodes_covered != shortest_path_cover.size()) {
         int cur_spc_node = dist(rng);
         while (spc_node_covered[cur_spc_node]) cur_spc_node = dist(rng);
+        spc_node_covered[cur_spc_node] = true;
+        lb_data.m_start_node = shortest_path_cover[cur_spc_node];
 
-        lb_data.m_start_node = cur_spc_node;
+        if (lb_data.m_marked[lb_data.m_start_node]) {
+            spc_nodes_covered++;
+            continue;
+        }
 
         // run dijkstra until threshold reached
         lowerBoundDijkstra(lb_data);
@@ -915,11 +1073,17 @@ std::vector<int> Graph::lowerBound(std::vector<int>& shortest_path_cover, int th
         // look at paths with length greater than threshold
         // 1. first find all end nodes with path longer than threshold
         std::vector<int> end_nodes;
-        for (int i = 0; i < lb_data.m_distances.size(); ++i) {
-            if (lb_data.m_distances[i] < std::numeric_limits<int>::max() && lb_data.m_distances[i] < 2 * threshold &&
-                lb_data.m_distances[i] >= threshold)
-                end_nodes.push_back(i);
-            lb_data.m_distances[i] = std::numeric_limits<int>::max();
+        for (int i = 0; i < lb_data.m_reset_previous_node.size(); ++i) {
+            int id = lb_data.m_reset_previous_node[i];
+            if (lb_data.m_distances[id] < 2 * threshold && lb_data.m_distances[id] >= threshold) {
+                end_nodes.push_back(id);
+
+                if (lb_data.m_distances[id] !=
+                    simplifiedHubLabelQuery(m_fwd_hub_labels[lb_data.m_start_node], m_bwd_hub_labels[id])) {
+                    std::cout << "Different Distances" << std::endl;
+                }
+            }
+            lb_data.m_distances[id] = std::numeric_limits<int>::max();
         }
 
         // 2. backtrack paths through end node
@@ -928,6 +1092,8 @@ std::vector<int> Graph::lowerBound(std::vector<int>& shortest_path_cover, int th
         for (int& node : end_nodes) {
             int cur_num_spc_nodes = 0;
             int cur_node = node;
+            if (lb_data.m_marked[cur_node]) continue;
+
             while (cur_node != lb_data.m_start_node) {
                 int previous = lb_data.m_previous_node[cur_node];
                 if (lb_data.m_marked[previous]) break;
@@ -939,19 +1105,26 @@ std::vector<int> Graph::lowerBound(std::vector<int>& shortest_path_cover, int th
                 cur_node = previous;
             }
 
-            if (cur_node == lb_data.m_start_node && cur_num_spc_nodes < lowest_num_spc_nodes) {
+            if (cur_node == lb_data.m_start_node && !lb_data.m_marked[cur_node] &&
+                cur_num_spc_nodes < lowest_num_spc_nodes) {
                 lowest_num_spc_nodes = cur_num_spc_nodes;
-                selected_end_node = cur_node;
+                selected_end_node = node;
             }
         }
 
         // 3. go through path of selected end node
         if (selected_end_node != -1) {
+            std::vector<int> shortest_path;
             int cur_node = selected_end_node;
+            shortest_path.push_back(cur_node);
+            lb_data.m_marked[cur_node] = true;
             while (cur_node != lb_data.m_start_node) {
                 int previous = lb_data.m_previous_node[cur_node];
                 lb_data.m_marked[previous] = true;
+                cur_node = previous;
+                shortest_path.push_back(cur_node);
             }
+            shortest_paths_backwards.push_back(shortest_path);
             lower_bound.push_back(lb_data.m_start_node);
         }
 
@@ -959,7 +1132,36 @@ std::vector<int> Graph::lowerBound(std::vector<int>& shortest_path_cover, int th
         for (int& node : lb_data.m_reset_previous_node) lb_data.m_previous_node[node] = -1;
         lb_data.m_reset_previous_node.clear();
 
+        std::cout << "Finished: " << spc_nodes_covered << "\n";
+
         ++spc_nodes_covered;
+    }
+
+    // check for duplicates in paths
+
+    for (int i = 0; i < shortest_paths_backwards.size(); i++) {
+        for (int j = i + 1; j < shortest_paths_backwards.size(); j++) {
+            auto inters = intersection(shortest_paths_backwards[i], shortest_paths_backwards[j]);
+            if (inters.size() != 0) {
+                std::cout << "Intersection not empty: "
+                          << "i: " << i << " j: " << j << " size: " << inters.size() << "\n";
+                std::cout << "Start Node: " << shortest_paths_backwards[i][shortest_paths_backwards[i].size() - 1]
+                          << " End Node: " << shortest_paths_backwards[i][0] << "\n";
+                for (int k = 0; k < inters.size(); ++k) {
+                    std::cout << "Inside Intersection " << k << " : " << inters[k] << "\n";
+                }
+            }
+        }
+    }
+
+    std::cout << "Hier noch die Pfade: "
+              << "\n";
+    // print paths
+    for (int i = 0; i < shortest_paths_backwards.size(); i++) {
+        for (int j = 0; j < shortest_paths_backwards[i].size(); j++) {
+            std::cout << shortest_paths_backwards[i][j] << " ";
+        }
+        std::cout << "\n";
     }
 
     auto end = std::chrono::high_resolution_clock::now();
@@ -1578,6 +1780,45 @@ void Graph::lowerBoundDijkstra(LowerBoundData& lb_data) {
             }
         }
     }
+}
+
+bool Graph::pathCoverVerificationDijkstra(LowerBoundData& lb_data) {
+    // TODO:
+    std::priority_queue<std::pair<int, std::pair<int, bool>>, std::vector<std::pair<int, std::pair<int, bool>>>,
+                        std::greater<std::pair<int, std::pair<int, bool>>>>
+        pq;
+
+    lb_data.m_distances[lb_data.m_start_node] = 0;
+    lb_data.m_reset_previous_node.push_back(lb_data.m_start_node);
+    pq.push(std::make_pair(0, std::make_pair(lb_data.m_start_node, lb_data.m_marked[lb_data.m_start_node])));
+
+    while (!pq.empty()) {
+        auto cur_node = pq.top();
+        pq.pop();
+
+        if (lb_data.m_distances[cur_node.second.first] != cur_node.first) continue;
+
+        if (lb_data.m_distances[cur_node.second.first] > lb_data.m_threshold && !cur_node.second.second) return false;
+
+        if (static_cast<double>(cur_node.first) > static_cast<double>(lb_data.m_threshold) * 1.1) break;
+
+        for (Edge& e : m_graph[cur_node.second.first]) {
+            if (lb_data.m_distances[e.m_target] > lb_data.m_distances[cur_node.second.first] + e.m_cost) {
+                if (lb_data.m_distances[e.m_target] == std::numeric_limits<int>::max())
+                    lb_data.m_reset_previous_node.push_back(e.m_target);
+                lb_data.m_distances[e.m_target] = lb_data.m_distances[cur_node.second.first] + e.m_cost;
+
+                bool covered;
+                if (lb_data.m_marked[e.m_target])
+                    covered = true;
+                else
+                    covered = cur_node.second.second;
+                pq.push(std::make_pair(lb_data.m_distances[e.m_target], std::make_pair(e.m_target, covered)));
+            }
+        }
+    }
+
+    return true;
 }
 
 int Graph::simplifiedHubLabelQuery(std::vector<std::pair<int, int>>& fwd_labels,

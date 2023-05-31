@@ -143,6 +143,12 @@ class Graph {
 
     std::vector<int> createShortestPathCover(int threshold);
 
+    bool verifyShortestPathCover(std::vector<int>& shortest_path_cover, int threshold);
+
+    std::vector<int> reducePathCover(std::vector<int>& path_cover, int threshold);
+    bool forwardDijkstraSearch(LowerBoundData& lb_data);
+    bool backwardDijkstraSearch(LowerBoundData& lb_data);
+
     std::vector<int> lowerBound(std::vector<int>& shortest_path_cover, int threshold);
 
     std::vector<std::vector<Edge>>& getGraphVec() { return m_graph; }
@@ -192,6 +198,8 @@ class Graph {
                              int max_distance);
 
     void lowerBoundDijkstra(LowerBoundData& lb_data);
+
+    bool pathCoverVerificationDijkstra(LowerBoundData& lb_data);
 
     int simplifiedHubLabelQuery(std::vector<std::pair<int, int>>& fwd_labels,
                                 std::vector<std::pair<int, int>>& bwd_labels);

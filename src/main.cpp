@@ -8,7 +8,7 @@ int main(int argc, char *argv[]) {
 
     // don't prune graph when using advanced hub label creation
     olsp::Graph g("/home/helmut/Documents/BachelorArbeit/bachelorarbeit/data/stgtregbz.fmi", olsp::ReadMode::NORMAL,
-                  false, false, olsp::DistanceMode::TRAVEL_TIME);
+                  true, false, olsp::DistanceMode::DISTANCE_METERS);
 
     // int dist = olsp::Graph::dijkstraQuery(g.getGraphVec(), 377371, 754742);
     // std::cout << "Distance: " << dist << std::endl;
@@ -22,21 +22,19 @@ int main(int argc, char *argv[]) {
         std::cout << meeting_node << std::endl;
         // g.bidirectionalDijkstraGetPath(bd_data);
 
-        /*
         g.contractionHierachyQuery(bd_data);
         std::cout << "Distance: " << bd_data.m_distance << std::endl;
         std::cout << bd_data.m_meeting_node << std::endl;
         // g.bidirectionalDijkstraGetPath(bd_data);
-        */
     }
 
     olsp::QueryData bd_data(377371, 754742, g.getNumNodes(), false);
 
-    std::string file = "osm_levels.txt";
-    g.readOSMLevels(file);
+    // std::string file = "osm_levels.txt";
+    // g.readOSMLevels(file);
 
     g.setNumThreads(14);
-    int threshold = 125000;
+    int threshold = 4000;
 
     g.createHubLabels();
     g.hubLabelQuery(bd_data);
@@ -52,8 +50,11 @@ int main(int argc, char *argv[]) {
     auto path_cover = g.createShortestPathCover(threshold);
     std::cout << "Path Cover Size: " << path_cover.size() << std::endl;
 
-    auto lower_bound = g.lowerBound(path_cover, threshold);
-    std::cout << "Lower Bound Size: " << lower_bound.size();
+    auto new_path_cover = g.reducePathCover(path_cover, threshold);
+    std::cout << "New Path Cover Size: " << new_path_cover.size() << std::endl;
+
+    auto lower_bound = g.verifyShortestPathCover(new_path_cover, threshold);
+    std::cout << "Path Cover Valid?: " << lower_bound;
 
     return 0;
 }
