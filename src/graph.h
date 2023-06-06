@@ -34,23 +34,6 @@ struct ContractionData {
     ContractionData() = default;
 };
 
-struct AdvancedHubLabelData {
-    std::vector<bool> m_visited_fwd;
-    std::vector<bool> m_visited_bwd;
-    std::vector<int> m_distances_fwd;
-    std::vector<int> m_distances_bwd;
-
-    std::vector<int> m_reset_nodes_fwd;
-    std::vector<int> m_reset_nodes_bwd;
-
-    AdvancedHubLabelData(int num_nodes)
-        : m_visited_fwd(num_nodes, false),
-          m_visited_bwd(num_nodes, false),
-          m_distances_fwd(num_nodes, std::numeric_limits<int>::max()),
-          m_distances_bwd(num_nodes, std::numeric_limits<int>::max()) {}
-    AdvancedHubLabelData() = default;
-};
-
 struct LowerBoundData {
     int m_start_node;
     int m_threshold;
@@ -129,10 +112,6 @@ class Graph {
 
     void createHubLabels(int threshold = std::numeric_limits<int>::max());
 
-    void advancedCreateHubLabels(int num_partions, int threshold = std::numeric_limits<int>::max());
-    void forwardCHSearch(AdvancedHubLabelData& data, int start_node);
-    void backwardCHSearch(AdvancedHubLabelData& data, int start_node);
-
     void hubLabelQuery(QueryData& data);
 
     double averageLabelSize();
@@ -151,19 +130,9 @@ class Graph {
 
     std::vector<int> lowerBound(std::vector<int>& shortest_path_cover, int threshold);
 
-    std::vector<std::vector<Edge>>& getGraphVec() { return m_graph; }
-
-    void setNumThreads(int num_threads) { m_num_threads = num_threads; }
-
-    void writeNodeLevelsToFile(std::string& file_name);
-
-    void readOSMLevels(std::string& file_name);
-
    private:
     bool m_ch_available;  // ch = Contraction Hierarchy
     int m_num_nodes;
-    int m_num_threads = 1;
-    std::vector<unsigned long> m_osm_ids;
     std::vector<std::vector<Edge>> m_graph;
     std::vector<std::vector<Edge>> m_reverse_graph;
     std::vector<int> m_node_level;

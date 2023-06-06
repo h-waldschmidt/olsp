@@ -60,9 +60,6 @@ void Graph::readGraph(const std::string& path, ReadMode read_mode, DistanceMode 
     m_node_level.clear();
     std::vector<std::pair<double, double>> node_coords;
 
-    m_osm_ids.clear();
-    m_osm_ids.resize(num_nodes);
-
     // save node rank if CH Mode, else skip the node information
     // or save coords if distances in meters are required
     if (read_mode == ReadMode::CONTRACTION_HIERARCHY || dist_mode == DistanceMode::DISTANCE_METERS) {
@@ -77,7 +74,6 @@ void Graph::readGraph(const std::string& path, ReadMode read_mode, DistanceMode 
             // skip unused fields
             getline(ss, s, ' ');
             getline(ss, s, ' ');
-            m_osm_ids[i] = std::stoul(s);
 
             if (dist_mode == DistanceMode::DISTANCE_METERS) {
                 std::pair<double, double> coords;
@@ -99,12 +95,7 @@ void Graph::readGraph(const std::string& path, ReadMode read_mode, DistanceMode 
         }
     } else {
         for (int i = 0; i < num_nodes; ++i) {
-            getline(infile, line);
-            std::stringstream ss(line);
-            std::string s;
-            getline(ss, s, ' ');
-            getline(ss, s, ' ');
-            m_osm_ids[i] = std::stoul(s);
+            continue;
         }
     }
 
@@ -568,225 +559,6 @@ void Graph::createHubLabels(int threshold) {
     std::cout << "Finished creating hub labels. Took " << elapsed.count() << " milliseconds " << std::endl;
 }
 
-void Graph::advancedCreateHubLabels(int num_partitions, int threshold) {
-    std::cout << "Started creating hub labels." << std::endl;
-    auto begin = std::chrono::high_resolution_clock::now();
-
-    if (m_graph.empty() || m_reverse_graph.empty()) {
-        std::cout << "Can't create hub labels, because graph or reverse grpah is empty" << std::endl;
-        return;
-    }
-
-    m_fwd_hub_labels.clear();
-    m_fwd_hub_labels.resize(m_num_nodes);
-    m_bwd_hub_labels.clear();
-    m_bwd_hub_labels.resize(m_num_nodes);
-
-    omp_set_num_threads(m_num_threads);
-
-    std::vector<AdvancedHubLabelData> hub_label_data(m_num_threads);
-    for (int i = 0; i < m_num_threads; ++i) {
-        hub_label_data[i] = AdvancedHubLabelData(m_num_nodes);
-    }
-
-    // sort the levels, but don't change the original vector
-    std::vector<int> indices_sorted(m_num_nodes);
-    std::iota(indices_sorted.begin(), indices_sorted.end(), 0);
-    std::sort(indices_sorted.begin(), indices_sorted.end(),
-              [&](int i, int j) { return m_node_level[i] > m_node_level[j]; });
-
-    int finished_nodes = 0;
-    int loop_size = round(static_cast<double>(m_num_nodes) / static_cast<double>(num_partitions));
-
-    for (int iteration = 0; iteration < num_partitions; ++iteration) {
-        int start_index = round(static_cast<double>(iteration) * static_cast<double>(loop_size));
-        int end_index = round(static_cast<double>(iteration + 1) * static_cast<double>(loop_size));
-#pragma omp parallel for
-        for (int i = start_index; i < end_index; ++i) {
-            int node = indices_sorted[i];
-            int thread_num = omp_get_thread_num();
-
-            m_fwd_hub_labels[node].push_back(std::make_pair(node, 0));
-            m_bwd_hub_labels[node].push_back(std::make_pair(node, 0));
-
-            if (i == 0) continue;
-
-            // fwd lables
-            // do forward search and pruning
-            forwardCHSearch(hub_label_data[thread_num], node);
-            for (int j = 0; j < hub_label_data[thread_num].m_reset_nodes_fwd.size(); ++j) {
-                if (hub_label_data[thread_num].m_reset_nodes_fwd[j] == node) continue;
-                // if (m_node_level[node] >= m_node_level[hub_label_data[thread_num].m_reset_nodes_fwd[j]]) continue;
-                bool should_be_added = true;
-                for (Edge& e : m_reverse_graph[hub_label_data[thread_num].m_reset_nodes_fwd[j]]) {
-                    // if (m_node_level[e.m_target] <= m_node_level[hub_label_data[thread_num].m_reset_nodes_fwd[j]])
-                    // continue;
-
-                    if (hub_label_data[thread_num].m_distances_fwd[e.m_target] + e.m_cost <
-                        hub_label_data[thread_num].m_distances_fwd[hub_label_data[thread_num].m_reset_nodes_fwd[j]]) {
-                        should_be_added = false;
-                        break;
-                    }
-                }
-
-                if (should_be_added &&
-                    hub_label_data[thread_num].m_distances_fwd[hub_label_data[thread_num].m_reset_nodes_fwd[j]] <=
-                        threshold)
-                    m_fwd_hub_labels[node].push_back(std::make_pair(
-                        hub_label_data[thread_num].m_reset_nodes_fwd[j],
-                        hub_label_data[thread_num].m_distances_fwd[hub_label_data[thread_num].m_reset_nodes_fwd[j]]));
-            }
-
-            std::sort(m_fwd_hub_labels[node].begin(), m_fwd_hub_labels[node].end(),
-                      [](auto& left, auto& right) { return left.first < right.first; });
-
-            // bwd labels
-            // do backward search and pruning
-            backwardCHSearch(hub_label_data[thread_num], node);
-            for (int j = 0; j < hub_label_data[thread_num].m_reset_nodes_bwd.size(); ++j) {
-                if (hub_label_data[thread_num].m_reset_nodes_bwd[j] == node) continue;
-                // if (m_node_level[node] >= m_node_level[hub_label_data[thread_num].m_reset_nodes_bwd[j]]) continue;
-
-                bool should_be_added = true;
-                for (Edge& e : m_graph[hub_label_data[thread_num].m_reset_nodes_bwd[j]]) {
-                    // if (m_node_level[e.m_target] <= m_node_level[hub_label_data[thread_num].m_reset_nodes_bwd[j]])
-                    // continue;
-
-                    if (hub_label_data[thread_num].m_distances_bwd[e.m_target] + e.m_cost <
-                        hub_label_data[thread_num].m_distances_bwd[hub_label_data[thread_num].m_reset_nodes_bwd[j]]) {
-                        should_be_added = false;
-                        break;
-                    }
-                }
-
-                if (should_be_added &&
-                    hub_label_data[thread_num].m_distances_bwd[hub_label_data[thread_num].m_reset_nodes_bwd[j]] <=
-                        threshold)
-                    m_bwd_hub_labels[node].push_back(std::make_pair(
-                        hub_label_data[thread_num].m_reset_nodes_bwd[j],
-                        hub_label_data[thread_num].m_distances_bwd[hub_label_data[thread_num].m_reset_nodes_bwd[j]]));
-            }
-
-            std::sort(m_bwd_hub_labels[node].begin(), m_bwd_hub_labels[node].end(),
-                      [](auto& left, auto& right) { return left.first < right.first; });
-
-            // reset data for next run
-            for (int& index : hub_label_data[thread_num].m_reset_nodes_fwd) {
-                hub_label_data[thread_num].m_distances_fwd[index] = std::numeric_limits<int>::max();
-                hub_label_data[thread_num].m_visited_fwd[index] = false;
-            }
-            hub_label_data[thread_num].m_reset_nodes_fwd.clear();
-
-            for (int& index : hub_label_data[thread_num].m_reset_nodes_bwd) {
-                hub_label_data[thread_num].m_distances_bwd[index] = std::numeric_limits<int>::max();
-                hub_label_data[thread_num].m_visited_bwd[index] = false;
-            }
-            hub_label_data[thread_num].m_reset_nodes_bwd.clear();
-        }
-
-        for (int i = start_index; i < end_index; ++i) {
-            int node = indices_sorted[i];
-            if (i == 0) continue;
-
-            // bootstrapping
-            for (auto iter = m_fwd_hub_labels[node].begin(); iter != m_fwd_hub_labels[node].end();) {
-                int best_dist = std::numeric_limits<int>::max();
-                if (iter->first != node)
-                    best_dist = simplifiedHubLabelQuery(m_fwd_hub_labels[node], m_bwd_hub_labels[iter->first]);
-                if (best_dist < iter->second)
-                    iter = m_fwd_hub_labels[node].erase(iter);
-                else
-                    ++iter;
-            }
-
-            // bootstrapping
-            for (auto iter = m_bwd_hub_labels[node].begin(); iter != m_bwd_hub_labels[node].end();) {
-                int best_dist = std::numeric_limits<int>::max();
-                if (iter->first != node)
-                    best_dist = simplifiedHubLabelQuery(m_fwd_hub_labels[iter->first], m_bwd_hub_labels[node]);
-                if (best_dist < iter->second)
-                    iter = m_bwd_hub_labels[node].erase(iter);
-                else
-                    ++iter;
-            }
-        }
-
-        finished_nodes += round(static_cast<double>(iteration + 1) * static_cast<double>(loop_size)) -
-                          round(static_cast<double>(iteration) * static_cast<double>(loop_size));
-        std::cout << "Finished creating hubs for " << finished_nodes << " num of nodes." << std::endl;
-    }
-
-    auto end = std::chrono::high_resolution_clock::now();
-    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin);
-    std::cout << "Finished creating hub labels. Took " << elapsed.count() << " milliseconds " << std::endl;
-}
-
-void Graph::forwardCHSearch(AdvancedHubLabelData& data, int start_node) {
-    std::priority_queue<std::pair<int, int>, std::vector<std::pair<int, int>>, std::greater<std::pair<int, int>>>
-        fwd_pq;
-
-    data.m_distances_fwd[start_node] = 0;
-    data.m_visited_fwd[start_node] = true;
-    data.m_reset_nodes_fwd.push_back(start_node);
-
-    // first corresponds to distance and second is node index
-    fwd_pq.push(std::make_pair(0, start_node));
-
-    std::pair<int, int> fwd_node;
-
-    while (!fwd_pq.empty()) {
-        fwd_node = fwd_pq.top();
-        fwd_pq.pop();
-        if (data.m_visited_fwd[fwd_node.second] && fwd_node.first > data.m_distances_fwd[fwd_node.second]) continue;
-
-        for (Edge& e : m_graph[fwd_node.second]) {
-            // relax edge
-            // if (m_node_level[e.m_target] <= m_node_level[fwd_node.second]) continue;
-
-            if (!data.m_visited_fwd[e.m_target] || data.m_distances_fwd[e.m_target] > fwd_node.first + e.m_cost) {
-                if (!data.m_visited_fwd[e.m_target]) data.m_reset_nodes_fwd.push_back(e.m_target);
-                data.m_visited_fwd[e.m_target] = true;
-
-                data.m_distances_fwd[e.m_target] = fwd_node.first + e.m_cost;
-                fwd_pq.push(std::make_pair(data.m_distances_fwd[e.m_target], e.m_target));
-            }
-        }
-    }
-}
-
-void Graph::backwardCHSearch(AdvancedHubLabelData& data, int start_node) {
-    std::priority_queue<std::pair<int, int>, std::vector<std::pair<int, int>>, std::greater<std::pair<int, int>>>
-        bwd_pq;
-
-    data.m_distances_bwd[start_node] = 0;
-    data.m_visited_bwd[start_node] = true;
-    data.m_reset_nodes_bwd.push_back(start_node);
-
-    // first corresponds to distance and second is node index
-    bwd_pq.push(std::make_pair(0, start_node));
-
-    std::pair<int, int> bwd_node;
-
-    while (!bwd_pq.empty()) {
-        bwd_node = bwd_pq.top();
-        bwd_pq.pop();
-        if (!data.m_visited_bwd[bwd_node.second] && bwd_node.first > data.m_distances_bwd[bwd_node.second]) continue;
-
-        for (Edge& e : m_reverse_graph[bwd_node.second]) {
-            // relax edge
-            // if (m_node_level[e.m_target] <= m_node_level[bwd_node.second]) continue;
-
-            if (!data.m_visited_bwd[e.m_target] || data.m_distances_bwd[e.m_target] > bwd_node.first + e.m_cost) {
-                if (!data.m_visited_bwd[e.m_target]) data.m_reset_nodes_bwd.push_back(e.m_target);
-                data.m_visited_bwd[e.m_target] = true;
-
-                data.m_distances_bwd[e.m_target] = bwd_node.first + e.m_cost;
-                bwd_pq.push(std::make_pair(data.m_distances_bwd[e.m_target], e.m_target));
-            }
-        }
-    }
-}
-
 void Graph::hubLabelQuery(QueryData& data) {
     if (data.m_start < 0 || data.m_end < 0) {
         std::cout << "Invalid start or end nodes!" << std::endl;
@@ -1169,41 +941,6 @@ std::vector<int> Graph::lowerBound(std::vector<int>& shortest_path_cover, int th
     std::cout << "Finished calculating Lower Bound. Took " << elapsed.count() << " seconds" << std::endl;
 
     return lower_bound;
-}
-
-void Graph::writeNodeLevelsToFile(std::string& file_name) {
-    std::ofstream file(file_name);
-
-    for (int i = 0; i < m_num_nodes; ++i) {
-        file << m_node_level[i] << "\n";
-    }
-
-    file.close();
-}
-
-void Graph::readOSMLevels(std::string& file_name) {
-    std::ifstream infile;
-    try {
-        infile.open(file_name);
-        if (!infile.good()) throw std::runtime_error("File doesn't exist!");
-    } catch (const std::exception& e) {
-        std::cerr << e.what() << '\n';
-        exit(1);
-    }
-
-    m_node_level.clear();
-    m_node_level.resize(m_num_nodes);
-
-    std::string line;
-    for (int i = 0; i < m_num_nodes; i++) {
-        getline(infile, line);
-        unsigned long osm_id = std::stoul(line);
-        auto iter = std::find(m_osm_ids.begin(), m_osm_ids.end(), osm_id);
-
-        m_node_level[iter - m_osm_ids.begin()] = i;
-        // std::cout << "Finished: " << i << "\n";
-    }
-    infile.close();
 }
 
 void Graph::createReverseGraphNormal() {
