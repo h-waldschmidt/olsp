@@ -593,10 +593,10 @@ void Graph::advancedCreateHubLabels(int threshold) {
         return;
     }
 
-    m_fwd_hub_labels.clear();
-    m_fwd_hub_labels.resize(m_num_nodes);
-    m_bwd_hub_labels.clear();
-    m_bwd_hub_labels.resize(m_num_nodes);
+    m_adv_fwd_hub_labels.clear();
+    m_adv_fwd_hub_labels.resize(m_num_nodes);
+    m_adv_bwd_hub_labels.clear();
+    m_adv_bwd_hub_labels.resize(m_num_nodes);
 
     std::vector<AdvancedHubLabelData> hub_label_data(m_num_threads);
     for (int i = 0; i < m_num_threads; ++i) {
@@ -626,8 +626,8 @@ void Graph::advancedCreateHubLabels(int threshold) {
             int node = level_buckets[i][k];
             int thread_num = omp_get_thread_num();
 
-            m_fwd_hub_labels[node].push_back(std::make_pair(node, 0));
-            m_bwd_hub_labels[node].push_back(std::make_pair(node, 0));
+            m_adv_fwd_hub_labels[node].push_back(std::make_pair(node, 0));
+            m_adv_bwd_hub_labels[node].push_back(std::make_pair(node, 0));
 
             if (i == 0) continue;
 
@@ -652,21 +652,21 @@ void Graph::advancedCreateHubLabels(int threshold) {
                 if (should_be_added &&
                     hub_label_data[thread_num].m_distances_fwd[hub_label_data[thread_num].m_reset_nodes_fwd[j]] <=
                         threshold)
-                    m_fwd_hub_labels[node].push_back(std::make_pair(
+                    m_adv_fwd_hub_labels[node].push_back(std::make_pair(
                         hub_label_data[thread_num].m_reset_nodes_fwd[j],
                         hub_label_data[thread_num].m_distances_fwd[hub_label_data[thread_num].m_reset_nodes_fwd[j]]));
             }
 
-            std::sort(m_fwd_hub_labels[node].begin(), m_fwd_hub_labels[node].end(),
+            std::sort(m_adv_fwd_hub_labels[node].begin(), m_adv_fwd_hub_labels[node].end(),
                       [](auto& left, auto& right) { return left.first < right.first; });
 
             // bootstrapping
-            for (auto iter = m_fwd_hub_labels[node].begin(); iter != m_fwd_hub_labels[node].end();) {
+            for (auto iter = m_adv_fwd_hub_labels[node].begin(); iter != m_adv_fwd_hub_labels[node].end();) {
                 int best_dist = std::numeric_limits<int>::max();
                 if (iter->first != node)
-                    best_dist = simplifiedHubLabelQuery(m_fwd_hub_labels[node], m_bwd_hub_labels[iter->first]);
+                    best_dist = simplifiedHubLabelQuery(m_adv_fwd_hub_labels[node], m_adv_bwd_hub_labels[iter->first]);
                 if (best_dist < iter->second)
-                    iter = m_fwd_hub_labels[node].erase(iter);
+                    iter = m_adv_fwd_hub_labels[node].erase(iter);
                 else
                     ++iter;
             }
@@ -693,21 +693,21 @@ void Graph::advancedCreateHubLabels(int threshold) {
                 if (should_be_added &&
                     hub_label_data[thread_num].m_distances_bwd[hub_label_data[thread_num].m_reset_nodes_bwd[j]] <=
                         threshold)
-                    m_bwd_hub_labels[node].push_back(std::make_pair(
+                    m_adv_bwd_hub_labels[node].push_back(std::make_pair(
                         hub_label_data[thread_num].m_reset_nodes_bwd[j],
                         hub_label_data[thread_num].m_distances_bwd[hub_label_data[thread_num].m_reset_nodes_bwd[j]]));
             }
 
-            std::sort(m_bwd_hub_labels[node].begin(), m_bwd_hub_labels[node].end(),
+            std::sort(m_adv_bwd_hub_labels[node].begin(), m_adv_bwd_hub_labels[node].end(),
                       [](auto& left, auto& right) { return left.first < right.first; });
 
             // bootstrapping
-            for (auto iter = m_bwd_hub_labels[node].begin(); iter != m_bwd_hub_labels[node].end();) {
+            for (auto iter = m_adv_bwd_hub_labels[node].begin(); iter != m_adv_bwd_hub_labels[node].end();) {
                 int best_dist = std::numeric_limits<int>::max();
                 if (iter->first != node)
-                    best_dist = simplifiedHubLabelQuery(m_fwd_hub_labels[iter->first], m_bwd_hub_labels[node]);
+                    best_dist = simplifiedHubLabelQuery(m_adv_fwd_hub_labels[iter->first], m_adv_bwd_hub_labels[node]);
                 if (best_dist < iter->second)
-                    iter = m_bwd_hub_labels[node].erase(iter);
+                    iter = m_adv_bwd_hub_labels[node].erase(iter);
                 else
                     ++iter;
             }
@@ -801,6 +801,34 @@ void Graph::backwardCHSearch(AdvancedHubLabelData& data, int start_node) {
     }
 }
 
+void Graph::compareHubLabels() {
+    // TODO:
+    for (int i = 0; i < m_num_nodes; ++i) {
+        // check fwd labels
+        for (auto& label : m_fwd_hub_labels[i]) {
+            auto iter = std::find_if(m_adv_fwd_hub_labels[i].begin(), m_adv_fwd_hub_labels[i].end(),
+                                     [label](const auto& m) -> bool { return m.first == label.first; });
+            if (iter == m_adv_fwd_hub_labels[i].end()) {
+                int dist = simplifiedHubLabelQuery(m_adv_fwd_hub_labels[i], m_adv_bwd_hub_labels[label.first]);
+                if (dist != label.second) {
+                    std::cout << "Wrong distance for Node " << i << " and label " << label.first << "\n";
+                }
+            }
+        }
+
+        // check bwd labels
+        for (auto& label : m_bwd_hub_labels[i]) {
+            auto iter = std::find_if(m_adv_bwd_hub_labels[i].begin(), m_adv_bwd_hub_labels[i].end(),
+                                     [label](const auto& m) -> bool { return m.first == label.first; });
+            if (iter == m_adv_bwd_hub_labels[i].end()) {
+                int dist = simplifiedHubLabelQuery(m_adv_bwd_hub_labels[label.first], m_adv_bwd_hub_labels[i]);
+                if (dist != label.second) {
+                    std::cout << "Wrong distance for Node " << i << " and label " << label.first << "\n";
+                }
+            }
+        }
+    }
+}
 void Graph::hubLabelQuery(QueryData& data) {
     if (data.m_start < 0 || data.m_end < 0) {
         std::cout << "Invalid start or end nodes!" << std::endl;

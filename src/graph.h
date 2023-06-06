@@ -136,6 +136,8 @@ class Graph {
     void forwardCHSearch(AdvancedHubLabelData& data, int start_node);
     void backwardCHSearch(AdvancedHubLabelData& data, int start_node);
 
+    void compareHubLabels();
+
     void hubLabelQuery(QueryData& data);
 
     double averageLabelSize();
@@ -163,8 +165,12 @@ class Graph {
     std::vector<int> m_node_level;
     std::vector<unsigned long> m_osm_ids;
     std::vector<ContractionData> m_contr_data;
+
     std::vector<std::vector<std::pair<int, int>>> m_fwd_hub_labels;
     std::vector<std::vector<std::pair<int, int>>> m_bwd_hub_labels;
+
+    std::vector<std::vector<std::pair<int, int>>> m_adv_fwd_hub_labels;
+    std::vector<std::vector<std::pair<int, int>>> m_adv_bwd_hub_labels;
 
     void createReverseGraphCH();
 
