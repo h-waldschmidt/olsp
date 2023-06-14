@@ -8,7 +8,7 @@ int main(int argc, char *argv[]) {
 
     // don't prune graph when using advanced hub label creation
     olsp::Graph g("/home/helmut/Documents/BachelorArbeit/bachelorarbeit/data/stgtregbz.fmi", olsp::ReadMode::NORMAL,
-                  true, false, olsp::DistanceMode::DISTANCE_METERS);
+                  true, true, olsp::DistanceMode::TRAVEL_TIME);
 
     // int dist = olsp::Graph::dijkstraQuery(g.getGraphVec(), 377371, 754742);
     // std::cout << "Distance: " << dist << std::endl;
@@ -28,7 +28,7 @@ int main(int argc, char *argv[]) {
         // g.bidirectionalDijkstraGetPath(bd_data);
     }
 
-    int threshold = 4000;
+    int threshold = 430000;
 
     g.createHubLabels();
     {
@@ -50,8 +50,8 @@ int main(int argc, char *argv[]) {
     // auto new_path_cover = g.lowerBound(path_cover, threshold);
     // std::cout << "New Path Cover Size: " << new_path_cover.size() << std::endl;
 
-    auto lower_bound = g.verifyShortestPathCover(path_cover, threshold);
-    std::cout << "Path Cover Valid?: " << lower_bound;
+    // auto lower_bound = g.verifyShortestPathCover(path_cover, threshold);
+    // std::cout << "Path Cover Valid?: " << lower_bound;
 
     return 0;
 }

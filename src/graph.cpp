@@ -95,7 +95,7 @@ void Graph::readGraph(const std::string& path, ReadMode read_mode, DistanceMode 
         }
     } else {
         for (int i = 0; i < num_nodes; ++i) {
-            continue;
+            getline(infile, line);
         }
     }
 
