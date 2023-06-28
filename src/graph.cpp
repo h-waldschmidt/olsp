@@ -738,29 +738,40 @@ std::vector<int> Graph::reducePathCover(std::vector<int>& path_cover, int thresh
 
 bool Graph::forwardDijkstraSearch(LowerBoundData& lb_data) {
     // TODO:
-    std::priority_queue<std::pair<int, int>, std::vector<std::pair<int, int>>, std::greater<std::pair<int, int>>> pq;
+    std::priority_queue<std::pair<int, std::pair<int, bool>>, std::vector<std::pair<int, std::pair<int, bool>>>,
+                        std::greater<std::pair<int, std::pair<int, bool>>>>
+        pq;
 
     lb_data.m_distances[lb_data.m_start_node] = 0;
     lb_data.m_reset_previous_node.push_back(lb_data.m_start_node);
-    pq.push(std::make_pair(0, lb_data.m_start_node));
+    pq.push(std::make_pair(0, std::make_pair(lb_data.m_start_node, false)));
 
     while (!pq.empty()) {
-        std::pair<int, int> cur_node = pq.top();
+        auto cur_node = pq.top();
         pq.pop();
 
-        if (lb_data.m_distances[cur_node.second] != cur_node.first) continue;
+        if (lb_data.m_distances[cur_node.second.first] != cur_node.first) continue;
 
-        if (cur_node.second != lb_data.m_start_node && lb_data.m_marked[cur_node.second]) return false;
+        if (lb_data.m_distances[cur_node.second.first] > static_cast<double>(lb_data.m_threshold) * 0.4 &&
+            cur_node.second.second)
+            return false;
 
-        if (static_cast<double>(cur_node.first) > static_cast<double>(lb_data.m_threshold) * 0.6) break;
+        if (static_cast<double>(cur_node.first) > static_cast<double>(lb_data.m_threshold) * 0.5) break;
 
-        for (Edge& e : m_graph[cur_node.second]) {
-            if (lb_data.m_distances[e.m_target] > lb_data.m_distances[cur_node.second] + e.m_cost) {
+        for (Edge& e : m_graph[cur_node.second.first]) {
+            if (m_node_level[cur_node.second.first] > m_node_level[e.m_target]) continue;
+
+            if (lb_data.m_distances[e.m_target] > lb_data.m_distances[cur_node.second.first] + e.m_cost) {
                 if (lb_data.m_distances[e.m_target] == std::numeric_limits<int>::max())
                     lb_data.m_reset_previous_node.push_back(e.m_target);
-                lb_data.m_distances[e.m_target] = lb_data.m_distances[cur_node.second] + e.m_cost;
-                lb_data.m_previous_node[e.m_target] = cur_node.second;
-                pq.push(std::make_pair(lb_data.m_distances[e.m_target], e.m_target));
+                lb_data.m_distances[e.m_target] = lb_data.m_distances[cur_node.second.first] + e.m_cost;
+                lb_data.m_previous_node[e.m_target] = cur_node.second.first;
+                bool covered;
+                if (lb_data.m_marked[e.m_target])
+                    covered = true;
+                else
+                    covered = cur_node.second.second;
+                pq.push(std::make_pair(lb_data.m_distances[e.m_target], std::make_pair(e.m_target, covered)));
             }
         }
     }
@@ -770,29 +781,40 @@ bool Graph::forwardDijkstraSearch(LowerBoundData& lb_data) {
 
 bool Graph::backwardDijkstraSearch(LowerBoundData& lb_data) {
     // TODO:
-    std::priority_queue<std::pair<int, int>, std::vector<std::pair<int, int>>, std::greater<std::pair<int, int>>> pq;
+    std::priority_queue<std::pair<int, std::pair<int, bool>>, std::vector<std::pair<int, std::pair<int, bool>>>,
+                        std::greater<std::pair<int, std::pair<int, bool>>>>
+        pq;
 
     lb_data.m_distances[lb_data.m_start_node] = 0;
     lb_data.m_reset_previous_node.push_back(lb_data.m_start_node);
-    pq.push(std::make_pair(0, lb_data.m_start_node));
+    pq.push(std::make_pair(0, std::make_pair(lb_data.m_start_node, false)));
 
     while (!pq.empty()) {
-        std::pair<int, int> cur_node = pq.top();
+        auto cur_node = pq.top();
         pq.pop();
 
-        if (lb_data.m_distances[cur_node.second] != cur_node.first) continue;
+        if (lb_data.m_distances[cur_node.second.first] != cur_node.first) continue;
 
-        if (cur_node.second != lb_data.m_start_node && lb_data.m_marked[cur_node.second]) return false;
+        if (lb_data.m_distances[cur_node.second.first] > static_cast<double>(lb_data.m_threshold) * 0.4 &&
+            cur_node.second.second)
+            return false;
 
-        if (static_cast<double>(cur_node.first) > static_cast<double>(lb_data.m_threshold) * 0.6) break;
+        if (static_cast<double>(cur_node.first) > static_cast<double>(lb_data.m_threshold) * 0.5) break;
 
-        for (Edge& e : m_reverse_graph[cur_node.second]) {
-            if (lb_data.m_distances[e.m_target] > lb_data.m_distances[cur_node.second] + e.m_cost) {
+        for (Edge& e : m_reverse_graph[cur_node.second.first]) {
+            if (m_node_level[cur_node.second.first] < m_node_level[e.m_target]) continue;
+
+            if (lb_data.m_distances[e.m_target] > lb_data.m_distances[cur_node.second.first] + e.m_cost) {
                 if (lb_data.m_distances[e.m_target] == std::numeric_limits<int>::max())
                     lb_data.m_reset_previous_node.push_back(e.m_target);
-                lb_data.m_distances[e.m_target] = lb_data.m_distances[cur_node.second] + e.m_cost;
-                lb_data.m_previous_node[e.m_target] = cur_node.second;
-                pq.push(std::make_pair(lb_data.m_distances[e.m_target], e.m_target));
+                lb_data.m_distances[e.m_target] = lb_data.m_distances[cur_node.second.first] + e.m_cost;
+                lb_data.m_previous_node[e.m_target] = cur_node.second.first;
+                bool covered;
+                if (lb_data.m_marked[e.m_target])
+                    covered = true;
+                else
+                    covered = cur_node.second.second;
+                pq.push(std::make_pair(lb_data.m_distances[e.m_target], std::make_pair(e.m_target, covered)));
             }
         }
     }
@@ -1028,19 +1050,19 @@ void Graph::createCH() {
     std::priority_queue<std::pair<int, int>, std::vector<std::pair<int, int>>, std::greater<std::pair<int, int>>>
         importance_pq;
     for (int i = 0; i < m_num_nodes; ++i) {
-        int importance = weightedCostHeuristic(contracted, i);
+        int importance = microsoftHeuristic(contracted, i, num_contracted);
         importance_pq.emplace(std::make_pair(importance, i));
     }
 
     while (num_contracted != m_num_nodes) {
         auto contracted_node = importance_pq.top();
         importance_pq.pop();
-        int new_importance = weightedCostHeuristic(contracted, contracted_node.second);
+        int new_importance = microsoftHeuristic(contracted, contracted_node.second, num_contracted);
         while (new_importance > importance_pq.top().first) {
             importance_pq.emplace(std::make_pair(new_importance, contracted_node.second));
             contracted_node = importance_pq.top();
             importance_pq.pop();
-            new_importance = weightedCostHeuristic(contracted, contracted_node.second);
+            new_importance = microsoftHeuristic(contracted, contracted_node.second, num_contracted);
         }
 
         contractNode(contracted, contracted_node.second);
@@ -1395,7 +1417,8 @@ int Graph::microsoftHeuristic(std::vector<bool>& contracted, int node, int cur_l
     else
         ++max_neighbour_level;
 
-    return 0.001 * max_cost + 2 * (num_added_shortcuts - (num_incomming + num_outgoing)) +
+    return static_cast<int>(0.001 * static_cast<double>(max_cost)) +
+           2 * (num_added_shortcuts - (num_incomming + num_outgoing)) +
            1 * m_contr_data.m_num_contracted_neighbours[node] + 5 * max_neighbour_level + underlying_shortcuts;
 }
 

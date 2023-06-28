@@ -86,6 +86,8 @@ enum ReadMode { NORMAL = 0, CONTRACTION_HIERARCHY = 1 };
 
 enum DistanceMode { TRAVEL_TIME = 0, DISTANCE_METERS = 1 };
 
+enum Heuristic { IN_OUT = 0, EDGE_DIFFERENCE = 1, WEIGHTED_COST = 2, MICROSOFT = 3 };
+
 class Graph {
    public:
     Graph(const std::string& path, ReadMode read_mode, bool ch_available, bool prune_graph,
@@ -129,6 +131,8 @@ class Graph {
     bool backwardDijkstraSearch(LowerBoundData& lb_data);
 
     std::vector<int> lowerBound(std::vector<int>& shortest_path_cover, int threshold);
+
+    std::vector<std::vector<Edge>>& getGraph() { return m_graph; }
 
    private:
     bool m_ch_available;  // ch = Contraction Hierarchy
