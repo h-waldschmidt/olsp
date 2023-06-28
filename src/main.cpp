@@ -146,7 +146,6 @@ void test() {
 
 void singleBenchmark(std::string graph_path, olsp::DistanceMode metric, olsp::Heuristic heuristic, int threshold) {
     if (metric == olsp::DistanceMode::TRAVEL_TIME) {
-        std::cout << "Stuttgart Graph with IN_OUT and TravelTime." << std::endl;
         double conversion = convertTravelTimeToMeters(graph_path, heuristic);
         std::cout << "Conversion: " << conversion << std::endl;
         threshold = static_cast<int>(static_cast<double>(threshold) / conversion);
@@ -174,9 +173,9 @@ void singleBenchmark(std::string graph_path, olsp::DistanceMode metric, olsp::He
 
 void benchmark() {
     // TODO:
-    std::string stuttgart_path = "/home/helmut/Documents/BachelorArbeit/bachelorarbeit/data/stgtregbz.fmi";
-    std::string bw_path = "/home/helmut/Documents/BachelorArbeit/bachelorarbeit/data/bw.fmi";
-    std::string germany_path = "/home/helmut/Documents/BachelorArbeit/bachelorarbeit/data/germany.fmi";
+    std::string stuttgart_path = "data/stgtregbz.fmi";
+    std::string bw_path = "data/bw.fmi";
+    std::string germany_path = "data/germany.fmi";
 
     int small_threshold = 40000;
     int big_threshold = 125000;
