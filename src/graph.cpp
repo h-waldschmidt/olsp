@@ -17,13 +17,14 @@
 
 namespace olsp {
 
-Graph::Graph(const std::string& path, ReadMode read_mode, bool ch_available, bool prune_graph, DistanceMode dist_mode)
+Graph::Graph(const std::string& path, ReadMode read_mode, bool ch_available, bool prune_graph, Heuristic ch_heuristic,
+             DistanceMode dist_mode)
     : m_ch_available(ch_available) {
     readGraph(path, read_mode, dist_mode);
     m_num_nodes = m_graph.size();
 
     if (read_mode == ReadMode::NORMAL && m_ch_available) {
-        createCH();  // TODO:
+        createCH(ch_heuristic);  // TODO:
     }
 
     createReverseGraph(prune_graph);
@@ -872,10 +873,12 @@ std::vector<int> Graph::lowerBound(std::vector<int>& shortest_path_cover, int th
             if (lb_data.m_distances[id] < 2 * threshold && lb_data.m_distances[id] >= threshold) {
                 end_nodes.push_back(id);
 
+                /*
                 if (lb_data.m_distances[id] !=
                     simplifiedHubLabelQuery(m_fwd_hub_labels[lb_data.m_start_node], m_bwd_hub_labels[id])) {
                     std::cout << "Different Distances" << std::endl;
                 }
+                */
             }
             lb_data.m_distances[id] = std::numeric_limits<int>::max();
         }
@@ -926,13 +929,13 @@ std::vector<int> Graph::lowerBound(std::vector<int>& shortest_path_cover, int th
         for (int& node : lb_data.m_reset_previous_node) lb_data.m_previous_node[node] = -1;
         lb_data.m_reset_previous_node.clear();
 
-        std::cout << "Finished: " << spc_nodes_covered << "\n";
+        // std::cout << "Finished: " << spc_nodes_covered << "\n";
 
         ++spc_nodes_covered;
     }
 
     // check for duplicates in paths
-
+    /*
     for (int i = 0; i < shortest_paths_backwards.size(); i++) {
         for (int j = i + 1; j < shortest_paths_backwards.size(); j++) {
             auto inters = intersection(shortest_paths_backwards[i], shortest_paths_backwards[j]);
@@ -947,7 +950,9 @@ std::vector<int> Graph::lowerBound(std::vector<int>& shortest_path_cover, int th
             }
         }
     }
+    */
 
+    /*
     std::cout << "Hier noch die Pfade: "
               << "\n";
     // print paths
@@ -957,6 +962,7 @@ std::vector<int> Graph::lowerBound(std::vector<int>& shortest_path_cover, int th
         }
         std::cout << "\n";
     }
+    */
 
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(end - begin);
@@ -1019,7 +1025,7 @@ int Graph::greatCircleDistance(double lat_1, double lon_1, double lat_2, double 
     return 6371000 * c;  // return in meters
 }
 
-void Graph::createCH() {
+void Graph::createCH(Heuristic heuristic) {
     std::cout << "Started creating CH." << std::endl;
 
     auto begin = std::chrono::high_resolution_clock::now();
@@ -1050,19 +1056,69 @@ void Graph::createCH() {
     std::priority_queue<std::pair<int, int>, std::vector<std::pair<int, int>>, std::greater<std::pair<int, int>>>
         importance_pq;
     for (int i = 0; i < m_num_nodes; ++i) {
-        int importance = microsoftHeuristic(contracted, i, num_contracted);
+        int importance = 0;
+        switch (heuristic) {
+            case Heuristic::IN_OUT:
+                importance = inOutProductHeuristic(contracted, i);
+                break;
+            case Heuristic::EDGE_DIFFERENCE:
+                importance = edgeDifferenceHeuristic(contracted, i);
+                break;
+            case Heuristic::WEIGHTED_COST:
+                importance = weightedCostHeuristic(contracted, i);
+                break;
+            case Heuristic::MICROSOFT:
+                importance = microsoftHeuristic(contracted, i, num_contracted);
+                break;
+            default:
+                break;
+        }
         importance_pq.emplace(std::make_pair(importance, i));
     }
 
     while (num_contracted != m_num_nodes) {
         auto contracted_node = importance_pq.top();
         importance_pq.pop();
-        int new_importance = microsoftHeuristic(contracted, contracted_node.second, num_contracted);
+
+        int new_importance = 0;
+        switch (heuristic) {
+            case Heuristic::IN_OUT:
+                new_importance = inOutProductHeuristic(contracted, contracted_node.second);
+                break;
+            case Heuristic::EDGE_DIFFERENCE:
+                new_importance = edgeDifferenceHeuristic(contracted, contracted_node.second);
+                break;
+            case Heuristic::WEIGHTED_COST:
+                new_importance = weightedCostHeuristic(contracted, contracted_node.second);
+                break;
+            case Heuristic::MICROSOFT:
+                new_importance = microsoftHeuristic(contracted, contracted_node.second, num_contracted);
+                break;
+            default:
+                break;
+        }
+
         while (new_importance > importance_pq.top().first) {
             importance_pq.emplace(std::make_pair(new_importance, contracted_node.second));
             contracted_node = importance_pq.top();
             importance_pq.pop();
-            new_importance = microsoftHeuristic(contracted, contracted_node.second, num_contracted);
+
+            switch (heuristic) {
+                case Heuristic::IN_OUT:
+                    new_importance = inOutProductHeuristic(contracted, contracted_node.second);
+                    break;
+                case Heuristic::EDGE_DIFFERENCE:
+                    new_importance = edgeDifferenceHeuristic(contracted, contracted_node.second);
+                    break;
+                case Heuristic::WEIGHTED_COST:
+                    new_importance = weightedCostHeuristic(contracted, contracted_node.second);
+                    break;
+                case Heuristic::MICROSOFT:
+                    new_importance = microsoftHeuristic(contracted, contracted_node.second, num_contracted);
+                    break;
+                default:
+                    break;
+            }
         }
 
         contractNode(contracted, contracted_node.second);

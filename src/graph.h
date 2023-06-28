@@ -90,7 +90,7 @@ enum Heuristic { IN_OUT = 0, EDGE_DIFFERENCE = 1, WEIGHTED_COST = 2, MICROSOFT =
 
 class Graph {
    public:
-    Graph(const std::string& path, ReadMode read_mode, bool ch_available, bool prune_graph,
+    Graph(const std::string& path, ReadMode read_mode, bool ch_available, bool prune_graph, Heuristic ch_heuristic,
           DistanceMode dist_mode = DistanceMode::TRAVEL_TIME);
     Graph(std::vector<std::vector<Edge>> graph);  // TODO: Adjust constructors for normal mode and ch mode
     ~Graph() = default;
@@ -150,7 +150,7 @@ class Graph {
 
     int greatCircleDistance(double lat_1, double lon_1, double lat_2, double lon_2);
 
-    void createCH();
+    void createCH(Heuristic heuristic);
 
     int inOutProductHeuristic(std::vector<bool>& contracted, int node);
 
