@@ -106,10 +106,12 @@ enum ReadMode { NORMAL = 0, CONTRACTION_HIERARCHY = 1 };
 
 enum DistanceMode { TRAVEL_TIME = 0, DISTANCE_METERS = 1 };
 
+enum Heuristic { IN_OUT = 0, EDGE_DIFFERENCE = 1, WEIGHTED_COST = 2, MICROSOFT = 3 };
+
 class Graph {
    public:
     Graph(const std::string& path, ReadMode read_mode, bool ch_available, bool prune_graph, int num_threads,
-          DistanceMode dist_mode = DistanceMode::TRAVEL_TIME);
+          Heuristic ch_heuristic, DistanceMode dist_mode = DistanceMode::TRAVEL_TIME);
     Graph(std::vector<std::vector<Edge>> graph);  // TODO: Adjust constructors for normal mode and ch mode
     ~Graph() = default;
 
@@ -142,13 +144,17 @@ class Graph {
 
     std::vector<int> createShortestPathCover(int threshold);
 
+    bool verifyShortestPathCover(std::vector<int>& shortest_path_cover, int threshold);
+
+    std::vector<int> reducePathCover(std::vector<int>& path_cover, int threshold);
+    bool forwardDijkstraSearch(LowerBoundData& lb_data);
+    bool backwardDijkstraSearch(LowerBoundData& lb_data);
+
     std::vector<int> lowerBound(std::vector<int>& shortest_path_cover, int threshold);
 
-    std::vector<std::vector<Edge>>& getGraphVec() { return m_graph; }
+    std::vector<std::vector<Edge>>& getGraph() { return m_graph; }
 
     void setNumThreads(int num_of_threads) { m_num_threads = num_of_threads; }
-
-    void writeNodeLevelsToFile(std::string& file_name);
 
    private:
     bool m_ch_available;  // ch = Contraction Hierarchy
@@ -157,7 +163,6 @@ class Graph {
     std::vector<std::vector<Edge>> m_graph;
     std::vector<std::vector<Edge>> m_reverse_graph;
     std::vector<int> m_node_level;
-    std::vector<unsigned long> m_osm_ids;
     std::vector<ContractionData> m_contr_data;
 
     std::vector<std::vector<std::pair<int, int>>> m_fwd_hub_labels;
@@ -169,7 +174,7 @@ class Graph {
 
     int greatCircleDistance(double lat_1, double lon_1, double lat_2, double lon_2);
 
-    void createCH();
+    void createCH(Heuristic heuristic);
 
     int inOutProductHeuristic(std::vector<bool>& contracted, int node);
 
@@ -190,6 +195,8 @@ class Graph {
                              int max_distance);
 
     void lowerBoundDijkstra(LowerBoundData& lb_data);
+
+    bool pathCoverVerificationDijkstra(LowerBoundData& lb_data);
 
     int simplifiedHubLabelQuery(std::vector<std::pair<int, int>>& fwd_labels,
                                 std::vector<std::pair<int, int>>& bwd_labels);

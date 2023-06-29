@@ -10,7 +10,7 @@ int main(int argc, char *argv[]) {
 
     omp_set_num_threads(14);
     olsp::Graph g("/home/helmut/Documents/BachelorArbeit/bachelorarbeit/data/stgtregbz.fmi", olsp::ReadMode::NORMAL,
-                  true, true, 14, olsp::DistanceMode::TRAVEL_TIME);
+                  true, false, 14, olsp::Heuristic::MICROSOFT, olsp::DistanceMode::TRAVEL_TIME);
 
     // int dist = olsp::Graph::dijkstraQuery(g.getGraphVec(), 377371, 754742);
     // std::cout << "Distance: " << dist << std::endl;
@@ -30,10 +30,8 @@ int main(int argc, char *argv[]) {
         // g.bidirectionalDijkstraGetPath(bd_data);
     }
 
-    olsp::QueryData bd_data(377380, 754750, 0, false);
+    olsp::QueryData bd_data(377371, 754742, 0, false);
 
-    std::string file = "osm_levels1.txt";
-    g.writeNodeLevelsToFile(file);
     int threshold = 125000;
 
     g.createHubLabels();
