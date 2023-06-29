@@ -132,12 +132,6 @@ class Graph {
 
     void createHubLabels(int threshold = std::numeric_limits<int>::max());
 
-    void advancedCreateHubLabels(int threshold = std::numeric_limits<int>::max());
-    void forwardCHSearch(AdvancedHubLabelData& data, int start_node);
-    void backwardCHSearch(AdvancedHubLabelData& data, int start_node);
-
-    void compareHubLabels();
-
     void hubLabelQuery(QueryData& data);
 
     double averageLabelSize();
@@ -168,9 +162,6 @@ class Graph {
 
     std::vector<std::vector<std::pair<int, int>>> m_fwd_hub_labels;
     std::vector<std::vector<std::pair<int, int>>> m_bwd_hub_labels;
-
-    std::vector<std::vector<std::pair<int, int>>> m_adv_fwd_hub_labels;
-    std::vector<std::vector<std::pair<int, int>>> m_adv_bwd_hub_labels;
 
     void createReverseGraphCH();
 
