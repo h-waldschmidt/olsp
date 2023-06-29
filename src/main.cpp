@@ -320,8 +320,37 @@ void benchmark() {
     }
 }
 
-int main(int argc, char* argv[]) {
-    benchmark();
+void germanyBenchmark() {
+    std::string germany_path = "data/germany.fmi";
 
+    int big_threshold = 125000;
+
+    // Germnay weighted Cost
+    {
+        std::cout << "Germany Graph with weighted cost and TravelTime." << std::endl;
+        singleBenchmark(germany_path, olsp::DistanceMode::TRAVEL_TIME, olsp::Heuristic::WEIGHTED_COST, big_threshold);
+    }
+
+    {
+        std::cout << "Germany Graph with weighted cost and Meter-Metric." << std::endl;
+        singleBenchmark(germany_path, olsp::DistanceMode::DISTANCE_METERS, olsp::Heuristic::WEIGHTED_COST,
+                        big_threshold);
+    }
+
+    // Germany microsoft
+    {
+        std::cout << "Germany Graph with Microsoft and TravelTime." << std::endl;
+        singleBenchmark(germany_path, olsp::DistanceMode::TRAVEL_TIME, olsp::Heuristic::MICROSOFT, big_threshold);
+    }
+
+    {
+        std::cout << "Germany Graph with Microsoft and Meter-Metric." << std::endl;
+        singleBenchmark(germany_path, olsp::DistanceMode::DISTANCE_METERS, olsp::Heuristic::MICROSOFT, big_threshold);
+    }
+}
+
+int main(int argc, char* argv[]) {
+    // benchmark();
+    germanyBenchmark();
     return 0;
 }
