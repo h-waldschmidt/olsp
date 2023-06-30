@@ -10,7 +10,7 @@ int main(int argc, char *argv[]) {
 
     omp_set_num_threads(14);
     olsp::Graph g("/home/helmut/Documents/BachelorArbeit/bachelorarbeit/data/stgtregbz.fmi", olsp::ReadMode::NORMAL,
-                  true, false, 14, olsp::Heuristic::MICROSOFT, olsp::DistanceMode::TRAVEL_TIME);
+                  true, false, 14, olsp::Heuristic::IN_OUT, olsp::DistanceMode::TRAVEL_TIME);
 
     // int dist = olsp::Graph::dijkstraQuery(g.getGraphVec(), 377371, 754742);
     // std::cout << "Distance: " << dist << std::endl;
@@ -54,3 +54,5 @@ int main(int argc, char *argv[]) {
     */
     return 0;
 }
+
+// TODO: Clear Hub Label bevor Lower BOund Berechnung
