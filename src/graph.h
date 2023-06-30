@@ -134,6 +134,11 @@ class Graph {
 
     std::vector<std::vector<Edge>>& getGraph() { return m_graph; }
 
+    void clearHubLabel() {
+        std::vector<std::vector<std::pair<int, int>>>().swap(m_fwd_hub_labels);
+        std::vector<std::vector<std::pair<int, int>>>().swap(m_bwd_hub_labels);
+    }
+
    private:
     bool m_ch_available;  // ch = Contraction Hierarchy
     int m_num_nodes;

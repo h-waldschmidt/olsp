@@ -1,7 +1,3 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
 #include <fstream>
 #include <iostream>
 #include <random>
@@ -166,6 +162,8 @@ void singleBenchmark(std::string graph_path, olsp::DistanceMode metric, olsp::He
 
     std::vector<int> path_cover = g.createShortestPathCover(threshold);
     std::cout << "Path cover size: " << path_cover.size() << std::endl;
+
+    g.clearHubLabel();
 
     std::vector<int> lower_bound = g.lowerBound(path_cover, threshold);
     std::cout << "Lower bound size: " << lower_bound.size() << std::endl;
@@ -351,6 +349,16 @@ void germanyBenchmark() {
 
 int main(int argc, char* argv[]) {
     // benchmark();
-    germanyBenchmark();
+    // germanyBenchmark();
+
+    std::string stuttgart_path = "/home/helmut/Documents/BachelorArbeit/bachelorarbeit/data/stgtregbz.fmi";
+
+    int small_threshold = 40000;
+    // Stuttgart IN_OUT
+    {
+        std::cout << "Stuttgart Graph with IN_OUT and TravelTime." << std::endl;
+        singleBenchmark(stuttgart_path, olsp::DistanceMode::DISTANCE_METERS, olsp::Heuristic::IN_OUT, small_threshold);
+    }
+
     return 0;
 }
