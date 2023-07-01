@@ -889,7 +889,10 @@ std::vector<int> Graph::lowerBound(std::vector<int>& shortest_path_cover, int th
     std::vector<bool> spc_node_covered(shortest_path_cover.size(), false);
     std::vector<int> lower_bound;
 
-    std::vector<std::vector<int>> shortest_paths_backwards;
+    // std::vector<std::vector<int>> shortest_paths_backwards;
+
+    // std::vector<int> shortest_path;
+    std::vector<int> end_nodes;
 
     while (spc_nodes_covered != shortest_path_cover.size()) {
         int cur_spc_node = dist(rng);
@@ -907,7 +910,7 @@ std::vector<int> Graph::lowerBound(std::vector<int>& shortest_path_cover, int th
 
         // look at paths with length greater than threshold
         // 1. first find all end nodes with path longer than threshold
-        std::vector<int> end_nodes;
+
         for (int i = 0; i < lb_data.m_reset_previous_node.size(); ++i) {
             int id = lb_data.m_reset_previous_node[i];
             if (lb_data.m_distances[id] < 2 * threshold && lb_data.m_distances[id] >= threshold) {
@@ -949,24 +952,26 @@ std::vector<int> Graph::lowerBound(std::vector<int>& shortest_path_cover, int th
             }
         }
 
+        end_nodes.clear();
+
         // 3. go through path of selected end node
         if (selected_end_node != -1) {
-            std::vector<int> shortest_path;
             int cur_node = selected_end_node;
-            shortest_path.push_back(cur_node);
+            // shortest_path.push_back(cur_node);
             lb_data.m_marked[cur_node] = true;
             while (cur_node != lb_data.m_start_node) {
                 int previous = lb_data.m_previous_node[cur_node];
                 lb_data.m_marked[previous] = true;
                 cur_node = previous;
-                shortest_path.push_back(cur_node);
+                // shortest_path.push_back(cur_node);
             }
-            shortest_paths_backwards.push_back(shortest_path);
+            // shortest_paths_backwards.push_back(shortest_path);
+            // shortest_path.clear();
             lower_bound.push_back(lb_data.m_start_node);
         }
 
         // reset data for next run
-        for (int& node : lb_data.m_reset_previous_node) lb_data.m_previous_node[node] = -1;
+        // for (int& node : lb_data.m_reset_previous_node) lb_data.m_previous_node[node] = -1;
         lb_data.m_reset_previous_node.clear();
 
         // std::cout << "Finished: " << spc_nodes_covered << "\n";
