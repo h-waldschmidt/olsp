@@ -889,6 +889,9 @@ std::vector<int> Graph::lowerBound(std::vector<int>& shortest_path_cover, int th
     std::vector<bool> spc_node_covered(shortest_path_cover.size(), false);
     std::vector<int> lower_bound;
 
+    std::vector<bool> node_in_spc(m_num_nodes, false);
+    for (int& node : shortest_path_cover) node_in_spc[node] = true;
+
     // std::vector<std::vector<int>> shortest_paths_backwards;
 
     // std::vector<int> shortest_path;
@@ -910,7 +913,6 @@ std::vector<int> Graph::lowerBound(std::vector<int>& shortest_path_cover, int th
 
         // look at paths with length greater than threshold
         // 1. first find all end nodes with path longer than threshold
-
         for (int i = 0; i < lb_data.m_reset_previous_node.size(); ++i) {
             int id = lb_data.m_reset_previous_node[i];
             if (lb_data.m_distances[id] < 2 * threshold && lb_data.m_distances[id] >= threshold) {
@@ -938,9 +940,7 @@ std::vector<int> Graph::lowerBound(std::vector<int>& shortest_path_cover, int th
                 int previous = lb_data.m_previous_node[cur_node];
                 if (lb_data.m_marked[previous]) break;
 
-                if (std::find(shortest_path_cover.begin(), shortest_path_cover.end(), cur_node) !=
-                    shortest_path_cover.end())
-                    ++cur_num_spc_nodes;
+                if (node_in_spc[cur_node]) ++cur_num_spc_nodes;
 
                 cur_node = previous;
             }
