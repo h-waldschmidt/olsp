@@ -271,29 +271,6 @@ void benchmark() {
         singleBenchmark(bw_path, olsp::DistanceMode::DISTANCE_METERS, olsp::Heuristic::MICROSOFT, big_threshold);
     }
 
-    // Germany IN_OUT
-    {
-        std::cout << "Germany Graph with IN_OUT and TravelTime." << std::endl;
-        singleBenchmark(germany_path, olsp::DistanceMode::TRAVEL_TIME, olsp::Heuristic::IN_OUT, big_threshold);
-    }
-
-    {
-        std::cout << "Germany Graph with IN_OUT and Meter-Metric." << std::endl;
-        singleBenchmark(germany_path, olsp::DistanceMode::DISTANCE_METERS, olsp::Heuristic::IN_OUT, big_threshold);
-    }
-
-    // Germany Edge Difference
-    {
-        std::cout << "Germany Graph with edge difference and TravelTime." << std::endl;
-        singleBenchmark(germany_path, olsp::DistanceMode::TRAVEL_TIME, olsp::Heuristic::EDGE_DIFFERENCE, big_threshold);
-    }
-
-    {
-        std::cout << "Germany Graph with edge difference and Meter-Metric." << std::endl;
-        singleBenchmark(germany_path, olsp::DistanceMode::DISTANCE_METERS, olsp::Heuristic::EDGE_DIFFERENCE,
-                        big_threshold);
-    }
-
     // Germnay weighted Cost
     {
         std::cout << "Germany Graph with weighted cost and TravelTime." << std::endl;
@@ -348,19 +325,8 @@ void germanyBenchmark() {
 }
 
 int main(int argc, char* argv[]) {
-    // benchmark();
+    benchmark();
     // germanyBenchmark();
-    // test();
-
-    std::string stuttgart_path = "/home/helmut/Documents/BachelorArbeit/bachelorarbeit/data/stgrgbz.fmi";
-
-    int small_threshold = 125000;
-    // Stuttgart IN_OUT
-    {
-        std::cout << "Stuttgart Graph with IN_OUT and TravelTime." << std::endl;
-        singleBenchmark(stuttgart_path, olsp::DistanceMode::DISTANCE_METERS, olsp::Heuristic::WEIGHTED_COST,
-                        small_threshold);
-    }
 
     return 0;
 }
