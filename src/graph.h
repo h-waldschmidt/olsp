@@ -156,6 +156,13 @@ class Graph {
 
     void setNumThreads(int num_of_threads) { m_num_threads = num_of_threads; }
 
+    void clearHubLabel() {
+        std::vector<int>().swap(m_fwd_indices);
+        std::vector<int>().swap(m_bwd_indices);
+        std::vector<std::pair<int, int>>().swap(m_fwd_hub_labels);
+        std::vector<std::pair<int, int>>().swap(m_bwd_hub_labels);
+    }
+
    private:
     bool m_ch_available;  // ch = Contraction Hierarchy
     int m_num_nodes;
@@ -165,8 +172,14 @@ class Graph {
     std::vector<int> m_node_level;
     std::vector<ContractionData> m_contr_data;
 
-    std::vector<std::vector<std::pair<int, int>>> m_fwd_hub_labels;
-    std::vector<std::vector<std::pair<int, int>>> m_bwd_hub_labels;
+    std::vector<int> m_level_indices_sorted;
+    std::vector<int> m_node_indices;
+    std::vector<int> m_fwd_indices;
+    std::vector<int> m_bwd_indices;
+    std::vector<std::pair<int, int>> m_fwd_hub_labels;
+    std::vector<std::pair<int, int>> m_bwd_hub_labels;
+    // std::vector<std::vector<std::pair<int, int>>> m_fwd_hub_labels;
+    // std::vector<std::vector<std::pair<int, int>>> m_bwd_hub_labels;
 
     void createReverseGraphCH();
 
@@ -198,8 +211,9 @@ class Graph {
 
     bool pathCoverVerificationDijkstra(LowerBoundData& lb_data);
 
-    int simplifiedHubLabelQuery(std::vector<std::pair<int, int>>& fwd_labels,
-                                std::vector<std::pair<int, int>>& bwd_labels);
+    int simplifiedHubLabelQuery(std::vector<std::pair<int, int>>& fwd_labels, int node);
+
+    int simplifiedHubLabelQuery(int node, std::vector<std::pair<int, int>>& bwd_labels);
 };
 
 }  // namespace olsp
