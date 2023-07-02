@@ -507,19 +507,31 @@ void Graph::createHubLabels(int threshold) {
 
         int test_1 = m_node_indices[node];
         int test_2 = m_level_indices_sorted[i];
-
+	
         // fwd lables
         for (Edge& e : m_graph[node]) {
             if (m_node_level[node] >= m_node_level[e.m_target]) continue;
 
             for (int j = m_fwd_indices[m_node_indices[e.m_target]]; j < m_fwd_indices[m_node_indices[e.m_target] + 1];
                  j++) {
+		if (i >= 16503330){
+			std::cout << "Node ID" << node << std::endl;
+			std::cout << "Target Node ID: " << e.m_target << std::endl;
+			std::cout << "Node Index: " << i << std::endl;
+			std::cout << "Target Node Index: " << m_node_indices[e.m_target] << std::endl;
+			std::cout << "Target Node fwd Index: " << m_fwd_indices[m_node_indices[e.m_target]] << std::endl;
+			
+			std::cout << "Target Node bwd Index: " << m_bwd_indices[m_node_indices[e.m_target]] << std::endl;
+			std::cout << "Num Fwd Label: " << m_fwd_hub_labels.size() << std::endl;
+			std::cout << "Do Fwd Label Produce segfault: " << j << std::endl;
+			std::cout << "Fwd Label: " << m_fwd_hub_labels[j].first << std::endl;
+			std::cout << "End Debug Output" << std::endl;
+		}
                 if (m_fwd_hub_labels[j].second + e.m_cost <= threshold)
                     fwd_labels.push_back(
                         std::make_pair(m_fwd_hub_labels[j].first, m_fwd_hub_labels[j].second + e.m_cost));
             }
         }
-
         // remove duplicates
         std::sort(fwd_labels.begin(), fwd_labels.end(),
                   [](auto& left, auto& right) { return left.first < right.first; });
@@ -536,6 +548,7 @@ void Graph::createHubLabels(int threshold) {
                 ++iter;
             }
         }
+
 
         for (auto iter = fwd_labels.begin(); iter != fwd_labels.end();) {
             int best_dist = std::numeric_limits<int>::max();
@@ -557,7 +570,6 @@ void Graph::createHubLabels(int threshold) {
                         std::make_pair(m_bwd_hub_labels[j].first, m_bwd_hub_labels[j].second + e.m_cost));
             }
         }
-
         // remove duplicates
         std::sort(bwd_labels.begin(), bwd_labels.end(),
                   [](auto& left, auto& right) { return left.first < right.first; });
@@ -574,7 +586,6 @@ void Graph::createHubLabels(int threshold) {
                 ++iter;
             }
         }
-
         for (auto iter = bwd_labels.begin(); iter != bwd_labels.end();) {
             int best_dist = std::numeric_limits<int>::max();
             if (iter->first != node) best_dist = simplifiedHubLabelQuery(iter->first, bwd_labels);
@@ -583,7 +594,6 @@ void Graph::createHubLabels(int threshold) {
             else
                 ++iter;
         }
-
         // update hub label data
         m_fwd_indices[i + 1] = m_fwd_indices[i] + static_cast<int>(fwd_labels.size());
         m_bwd_indices[i + 1] = m_bwd_indices[i] + static_cast<int>(bwd_labels.size());
@@ -595,7 +605,6 @@ void Graph::createHubLabels(int threshold) {
             m_bwd_hub_labels.push_back(label);
         }
 
-        std::cout << "Finished: " << i << "\n";
     }
 
     auto end = std::chrono::high_resolution_clock::now();
