@@ -603,8 +603,10 @@ void Graph::createHubLabels(int threshold) {
 #pragma omp ordered
             {
                 int fwd_node_index = m_node_indices[node];
-                m_fwd_indices[fwd_node_index + 1] = m_fwd_indices[fwd_node_index] + static_cast<int>(fwd_labels.size());
-                m_bwd_indices[fwd_node_index + 1] = m_bwd_indices[fwd_node_index] + static_cast<int>(bwd_labels.size());
+                m_fwd_indices[fwd_node_index + 1] =
+                    m_fwd_indices[fwd_node_index] + static_cast<uint64_t>(fwd_labels.size());
+                m_bwd_indices[fwd_node_index + 1] =
+                    m_bwd_indices[fwd_node_index] + static_cast<uint64_t>(bwd_labels.size());
 
                 for (auto label : fwd_labels) {
                     m_fwd_hub_labels.push_back(label);
