@@ -595,7 +595,7 @@ void Graph::createHubLabels(int threshold) {
             m_bwd_hub_labels.push_back(label);
         }
 
-        // std::cout << "Finished: " << i << "\n";
+        if (i % 100000 == 0) std::cout << "Finished: " << i << "\n";
     }
 
     auto end = std::chrono::high_resolution_clock::now();

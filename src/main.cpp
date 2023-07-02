@@ -325,8 +325,8 @@ void germanyBenchmark() {
 }
 
 int main(int argc, char* argv[]) {
-    benchmark();
-    // germanyBenchmark();
+    // benchmark();
+    germanyBenchmark();
 
     return 0;
 }
