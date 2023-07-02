@@ -486,32 +486,3 @@ Path cover size: 795
 Started calculating Lower Bound.
 Finished calculating Lower Bound. Took 612 seconds
 Lower bound size: 93
-Germany Graph with weighted cost and TravelTime.
-Started reading graph file.
-Finished reading graph file. Took 31737 milliseconds 
-Started creating CH.
-Started creating reverse graph.
-Finished creating reverse graph. Took 5554 milliseconds 
-Finished creating CH. Took 432 seconds
-Started creating reverse graph.
-Finished creating reverse graph. Took 21073 milliseconds 
-Started reading graph file.
-Finished reading graph file. Took 56703 milliseconds 
-Started creating CH.
-Started creating reverse graph.
-Finished creating reverse graph. Took 8278 milliseconds 
-Finished creating CH. Took 505 seconds
-Started creating reverse graph.
-Finished creating reverse graph. Took 24325 milliseconds 
-Conversion: 0.224399
-Threshold: 557043
-Started reading graph file.
-Finished reading graph file. Took 29060 milliseconds 
-Started creating CH.
-Started creating reverse graph.
-Finished creating reverse graph. Took 5031 milliseconds 
-Finished creating CH. Took 450 seconds
-Started creating reverse graph.
-Finished creating reverse graph. Took 25305 milliseconds 
-Graph Memory usage in kb: 9554340
-Started creating hub labels.
