@@ -141,13 +141,12 @@ void test() {
 }
 
 void singleBenchmark(std::string graph_path, olsp::DistanceMode metric, olsp::Heuristic heuristic, int threshold) {
-    /*
-    if (metric == olsp::DistanceMode::TRAVEL_TIME) {
+        if (metric == olsp::DistanceMode::TRAVEL_TIME) {
         double conversion = convertTravelTimeToMeters(graph_path, heuristic);
         std::cout << "Conversion: " << conversion << std::endl;
         threshold = static_cast<int>(static_cast<double>(threshold) / conversion);
     }
-*/
+
     std::cout << "Threshold: " << threshold << std::endl;
     olsp::Graph g(graph_path, olsp::ReadMode::NORMAL, true, false, heuristic, metric);
 
