@@ -173,7 +173,7 @@ void singleBenchmark(std::string graph_path, olsp::DistanceMode metric, olsp::He
 
 void benchmark() {
     // TODO:
-    std::string stuttgart_path = "/home/helmut/Documents/BachelorArbeit/bachelorarbeit/data/stgtregbz.fmi";
+    std::string stuttgart_path = "data/stgtregbz.fmi";
     std::string bw_path = "data/bw.fmi";
     std::string germany_path = "data/germany.fmi";
 
