@@ -623,11 +623,11 @@ void Graph::hubLabelQuery(QueryData& data) {
     data.m_distance = std::numeric_limits<int>::max();
     data.m_meeting_node = -1;
 
-    int fwd_node_index = m_fwd_indices[m_node_indices[data.m_start]];
-    int fwd_next_index = m_fwd_indices[m_node_indices[data.m_start] + 1];
+    u_int64_t fwd_node_index = m_fwd_indices[m_node_indices[data.m_start]];
+    u_int64_t fwd_next_index = m_fwd_indices[m_node_indices[data.m_start] + 1];
 
-    int bwd_node_index = m_bwd_indices[m_node_indices[data.m_end]];
-    int bwd_next_index = m_bwd_indices[m_node_indices[data.m_end] + 1];
+    u_int64_t bwd_node_index = m_bwd_indices[m_node_indices[data.m_end]];
+    u_int64_t bwd_next_index = m_bwd_indices[m_node_indices[data.m_end] + 1];
 
     while (fwd_node_index < fwd_next_index && bwd_node_index < bwd_next_index) {
         if (m_fwd_hub_labels[fwd_node_index].first == m_bwd_hub_labels[bwd_node_index].first) {
@@ -1692,8 +1692,8 @@ bool Graph::pathCoverVerificationDijkstra(LowerBoundData& lb_data) {
 int Graph::simplifiedHubLabelQuery(std::vector<std::pair<int, int>>& fwd_labels, int node) {
     int distance = std::numeric_limits<int>::max();
     auto fwd_iter = fwd_labels.begin();
-    int bwd_node_index = m_bwd_indices[m_node_indices[node]];
-    int bwd_next_index = m_bwd_indices[m_node_indices[node] + 1];
+    u_int64_t bwd_node_index = m_bwd_indices[m_node_indices[node]];
+    u_int64_t bwd_next_index = m_bwd_indices[m_node_indices[node] + 1];
 
     while (fwd_iter != fwd_labels.end() && bwd_node_index < bwd_next_index) {
         if (fwd_iter->first == m_bwd_hub_labels[bwd_node_index].first) {
@@ -1713,8 +1713,8 @@ int Graph::simplifiedHubLabelQuery(std::vector<std::pair<int, int>>& fwd_labels,
 
 int Graph::simplifiedHubLabelQuery(int node, std::vector<std::pair<int, int>>& bwd_labels) {
     int distance = std::numeric_limits<int>::max();
-    int fwd_node_index = m_fwd_indices[m_node_indices[node]];
-    int fwd_next_index = m_fwd_indices[m_node_indices[node] + 1];
+    u_int64_t fwd_node_index = m_fwd_indices[m_node_indices[node]];
+    u_int64_t fwd_next_index = m_fwd_indices[m_node_indices[node] + 1];
     auto bwd_iter = bwd_labels.begin();
 
     while (fwd_node_index < fwd_next_index && bwd_iter != bwd_labels.end()) {
