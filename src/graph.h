@@ -135,8 +135,8 @@ class Graph {
     std::vector<std::vector<Edge>>& getGraph() { return m_graph; }
 
     void clearHubLabel() {
-        std::vector<unsigned int>().swap(m_fwd_indices);
-        std::vector<unsigned int>().swap(m_bwd_indices);
+        std::vector<uint64_t>().swap(m_fwd_indices);
+        std::vector<uint64_t>().swap(m_bwd_indices);
         std::vector<std::pair<int, int>>().swap(m_fwd_hub_labels);
         std::vector<std::pair<int, int>>().swap(m_bwd_hub_labels);
     }
@@ -151,8 +151,8 @@ class Graph {
 
     std::vector<int> m_level_indices_sorted;
     std::vector<int> m_node_indices;
-    std::vector<unsigned int> m_fwd_indices;
-    std::vector<unsigned int> m_bwd_indices;
+    std::vector<uint64_t> m_fwd_indices;
+    std::vector<uint64_t> m_bwd_indices;
     std::vector<std::pair<int, int>> m_fwd_hub_labels;
     std::vector<std::pair<int, int>> m_bwd_hub_labels;
     // std::vector<std::vector<std::pair<int, int>>> m_fwd_hub_labels;

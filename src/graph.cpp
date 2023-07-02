@@ -595,8 +595,8 @@ void Graph::createHubLabels(int threshold) {
                 ++iter;
         }
         // update hub label data
-        m_fwd_indices[i + 1] = m_fwd_indices[i] + static_cast<int>(fwd_labels.size());
-        m_bwd_indices[i + 1] = m_bwd_indices[i] + static_cast<int>(bwd_labels.size());
+        m_fwd_indices[i + 1] = m_fwd_indices[i] + static_cast<uint64_t>(fwd_labels.size());
+        m_bwd_indices[i + 1] = m_bwd_indices[i] + static_cast<uint64_t>(bwd_labels.size());
 
         for (auto label : fwd_labels) {
             m_fwd_hub_labels.push_back(label);
