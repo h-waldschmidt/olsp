@@ -512,8 +512,8 @@ void Graph::createHubLabels(int threshold) {
         for (Edge& e : m_graph[node]) {
             if (m_node_level[node] >= m_node_level[e.m_target]) continue;
 
-            for (int j = m_fwd_indices[m_node_indices[e.m_target]]; j < m_fwd_indices[m_node_indices[e.m_target] + 1];
-                 j++) {
+            for (uint64_t j = m_fwd_indices[m_node_indices[e.m_target]];
+                 j < m_fwd_indices[m_node_indices[e.m_target] + 1]; j++) {
                 /*
                 if (i >= 16503330){
                     std::cout << "Node ID" << node << std::endl;
@@ -563,8 +563,8 @@ void Graph::createHubLabels(int threshold) {
         for (Edge& e : m_reverse_graph[node]) {
             if (m_node_level[node] >= m_node_level[e.m_target]) continue;
 
-            for (int j = m_bwd_indices[m_node_indices[e.m_target]]; j < m_bwd_indices[m_node_indices[e.m_target] + 1];
-                 j++) {
+            for (uint64_t j = m_bwd_indices[m_node_indices[e.m_target]];
+                 j < m_bwd_indices[m_node_indices[e.m_target] + 1]; j++) {
                 if (m_bwd_hub_labels[j].second + e.m_cost <= threshold)
                     bwd_labels.push_back(
                         std::make_pair(m_bwd_hub_labels[j].first, m_bwd_hub_labels[j].second + e.m_cost));
