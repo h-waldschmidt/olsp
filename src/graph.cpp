@@ -530,7 +530,7 @@ void Graph::createHubLabels(int threshold) {
 
                 for (uint64_t j = m_fwd_indices[m_node_indices[e.m_target]];
                      j < m_fwd_indices[m_node_indices[e.m_target] + 1]; j++) {
-                    if (i >= 16503330) {
+                    if (num_calculated >= m_num_nodes / 2) {
                         std::cout << "Node ID" << node << std::endl;
                         std::cout << "Target Node ID: " << e.m_target << std::endl;
                         std::cout << "Node Index: " << i << std::endl;
