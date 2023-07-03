@@ -303,11 +303,12 @@ void germanyBenchmark() {
     int big_threshold = 125000;
 
     // Germnay weighted Cost
+    /*
     {
         std::cout << "Germany Graph with weighted cost and TravelTime." << std::endl;
         singleBenchmark(germany_path, olsp::DistanceMode::TRAVEL_TIME, olsp::Heuristic::WEIGHTED_COST, big_threshold);
     }
-
+*/
     {
         std::cout << "Germany Graph with weighted cost and Meter-Metric." << std::endl;
         singleBenchmark(germany_path, olsp::DistanceMode::DISTANCE_METERS, olsp::Heuristic::WEIGHTED_COST,

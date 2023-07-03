@@ -530,6 +530,20 @@ void Graph::createHubLabels(int threshold) {
 
                 for (uint64_t j = m_fwd_indices[m_node_indices[e.m_target]];
                      j < m_fwd_indices[m_node_indices[e.m_target] + 1]; j++) {
+                    if (i >= 16503330) {
+                        std::cout << "Node ID" << node << std::endl;
+                        std::cout << "Target Node ID: " << e.m_target << std::endl;
+                        std::cout << "Node Index: " << i << std::endl;
+                        std::cout << "Target Node Index: " << m_node_indices[e.m_target] << std::endl;
+                        std::cout << "Target Node fwd Index: " << m_fwd_indices[m_node_indices[e.m_target]]
+                                  << std::endl;
+                        std::cout << "Target Node bwd Index: " << m_bwd_indices[m_node_indices[e.m_target]]
+                                  << std::endl;
+                        std::cout << "Num Fwd Label: " << m_fwd_hub_labels.size() << std::endl;
+                        std::cout << "Do Fwd Label Produce segfault: " << j << std::endl;
+                        std::cout << "Fwd Label: " << m_fwd_hub_labels[j].first << std::endl;
+                        std::cout << "End Debug Output" << std::endl;
+                    }
                     if (m_fwd_hub_labels[j].second + e.m_cost <= threshold)
                         fwd_labels.push_back(
                             std::make_pair(m_fwd_hub_labels[j].first, m_fwd_hub_labels[j].second + e.m_cost));
