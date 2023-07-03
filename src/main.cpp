@@ -91,8 +91,8 @@ void test() {
     // olsp::ReadMode::CONTRACTION_HIERACHIES);
 
     // don't prune graph when using advanced hub label creation
-    olsp::Graph g("/home/helmut/Documents/BachelorArbeit/bachelorarbeit/data/stgtregbz.fmi", olsp::ReadMode::NORMAL,
-                  true, false, olsp::Heuristic::WEIGHTED_COST, olsp::DistanceMode::TRAVEL_TIME);
+    olsp::Graph g("data/stgtregbz.fmi", olsp::ReadMode::NORMAL, true, false, olsp::Heuristic::WEIGHTED_COST,
+                  olsp::DistanceMode::TRAVEL_TIME);
 
     // int dist = olsp::Graph::dijkstraQuery(g.getGraphVec(), 377371, 754742);
     // std::cout << "Distance: " << dist << std::endl;
