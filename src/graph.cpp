@@ -1,7 +1,5 @@
 #include "graph.h"
 
-#include <omp.h>
-
 #include <algorithm>
 #include <chrono>
 #include <fstream>
@@ -804,8 +802,8 @@ bool Graph::forwardDijkstraSearch(LowerBoundData& lb_data) {
         if (lb_data.m_distances[cur_node.second.first] != cur_node.first) continue;
 
         if (lb_data.m_distances[cur_node.second.first] > static_cast<double>(lb_data.m_threshold) * 0.4 &&
-            cur_node.second.second)
-            return false;
+            !cur_node.second.second)
+            return true;
 
         if (static_cast<double>(cur_node.first) > static_cast<double>(lb_data.m_threshold) * 0.5) break;
 
@@ -827,7 +825,7 @@ bool Graph::forwardDijkstraSearch(LowerBoundData& lb_data) {
         }
     }
 
-    return true;
+    return false;
 }
 
 bool Graph::backwardDijkstraSearch(LowerBoundData& lb_data) {
@@ -847,8 +845,8 @@ bool Graph::backwardDijkstraSearch(LowerBoundData& lb_data) {
         if (lb_data.m_distances[cur_node.second.first] != cur_node.first) continue;
 
         if (lb_data.m_distances[cur_node.second.first] > static_cast<double>(lb_data.m_threshold) * 0.4 &&
-            cur_node.second.second)
-            return false;
+            !cur_node.second.second)
+            return true;
 
         if (static_cast<double>(cur_node.first) > static_cast<double>(lb_data.m_threshold) * 0.5) break;
 
@@ -870,7 +868,7 @@ bool Graph::backwardDijkstraSearch(LowerBoundData& lb_data) {
         }
     }
 
-    return true;
+    return false;
 }
 
 std::vector<int> intersection(std::vector<int> v1, std::vector<int> v2) {

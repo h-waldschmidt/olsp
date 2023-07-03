@@ -133,15 +133,15 @@ void test() {
     auto path_cover = g.createShortestPathCover(threshold);
     std::cout << "Path Cover Size: " << path_cover.size() << std::endl;
 
-    // auto new_path_cover = g.reducePathCover(path_cover, threshold);
-    // std::cout << "New Path Cover Size: " << new_path_cover.size() << std::endl;
+    auto new_path_cover = g.reducePathCover(path_cover, threshold);
+    std::cout << "New Path Cover Size: " << new_path_cover.size() << std::endl;
 
-    // auto lower_bound = g.verifyShortestPathCover(path_cover, threshold);
-    // std::cout << "Path Cover Valid?: " << lower_bound;
+    auto lower_bound = g.verifyShortestPathCover(new_path_cover, threshold);
+    std::cout << "Path Cover Valid?: " << lower_bound;
 }
 
 void singleBenchmark(std::string graph_path, olsp::DistanceMode metric, olsp::Heuristic heuristic, int threshold) {
-        if (metric == olsp::DistanceMode::TRAVEL_TIME) {
+    if (metric == olsp::DistanceMode::TRAVEL_TIME) {
         double conversion = convertTravelTimeToMeters(graph_path, heuristic);
         std::cout << "Conversion: " << conversion << std::endl;
         threshold = static_cast<int>(static_cast<double>(threshold) / conversion);
@@ -326,7 +326,8 @@ void germanyBenchmark() {
 
 int main(int argc, char* argv[]) {
     // benchmark();
-    germanyBenchmark();
+    // germanyBenchmark();
+    test();
 
     return 0;
 }
