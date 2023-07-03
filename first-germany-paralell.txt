@@ -1,0 +1,51 @@
+Germany Graph with weighted cost and TravelTime.
+Started reading graph file.
+Finished reading graph file. Took 29872 milliseconds 
+Started creating CH.
+Started creating reverse graph.
+Finished creating reverse graph. Took 5687 milliseconds 
+Finished creating CH. Took 750 seconds
+Started creating reverse graph.
+Finished creating reverse graph. Took 21368 milliseconds 
+Started reading graph file.
+Finished reading graph file. Took 54910 milliseconds 
+Started creating CH.
+Started creating reverse graph.
+Finished creating reverse graph. Took 6462 milliseconds 
+Finished creating CH. Took 1225 seconds
+Started creating reverse graph.
+Finished creating reverse graph. Took 21058 milliseconds 
+Conversion: 0.210169
+Threshold: 594760
+Started reading graph file.
+Finished reading graph file. Took 30251 milliseconds 
+Started creating CH.
+Started creating reverse graph.
+Finished creating reverse graph. Took 5251 milliseconds 
+Finished creating CH. Took 763 seconds
+Started creating reverse graph.
+Finished creating reverse graph. Took 23596 milliseconds 
+Graph Memory usage in kb: 11130004
+Started creating hub labels.
+Finished creating hub labels. Took 680508 milliseconds 
+Graph and Label Memory usage in kb: 78238876
+Avg. Label Size: 136
+Max Label Size: 278
+Started creating Path Cover.
+Finished creating Path Cover. Took 57930 milliseconds
+Path cover size: 3323
+Started calculating Lower Bound.
+Finished calculating Lower Bound. Took 16461 seconds
+Lower bound size: 394
+Germany Graph with weighted cost and Meter-Metric.
+Threshold: 125000
+Started reading graph file.
+Finished reading graph file. Took 54826 milliseconds 
+Started creating CH.
+Started creating reverse graph.
+Finished creating reverse graph. Took 5263 milliseconds 
+Finished creating CH. Took 1224 seconds
+Started creating reverse graph.
+Finished creating reverse graph. Took 23475 milliseconds 
+Graph Memory usage in kb: 11170708
+Started creating hub labels.
