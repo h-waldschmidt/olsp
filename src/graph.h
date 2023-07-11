@@ -1,11 +1,12 @@
 #pragma once
 
+#include <stdint.h>
+
 #include <limits>
 #include <string>
 #include <vector>
 
 namespace olsp {
-
 struct Edge {
     int m_target;  // corresponds to index of node in graph datastructure
     int m_cost;
