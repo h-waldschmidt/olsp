@@ -142,9 +142,13 @@ void test() {
     // std::cout << "Path Cover Valid?: " << lower_bound;
 }
 
-void singleBenchmark(std::string graph_path, olsp::DistanceMode metric, olsp::Heuristic heuristic, int threshold) {
-    if (metric == olsp::DistanceMode::TRAVEL_TIME) {
-        double conversion = convertTravelTimeToMeters(graph_path, heuristic);
+void singleBenchmark(std::string graph_path, olsp::DistanceMode metric, olsp::Heuristic heuristic, int threshold,
+                     double conversion = 0) {
+    if (metric == olsp::DistanceMode::TRAVEL_TIME && conversion == 0) {
+        double new_conversion = convertTravelTimeToMeters(graph_path, heuristic);
+        std::cout << "Conversion: " << new_conversion << std::endl;
+        threshold = static_cast<int>(static_cast<double>(threshold) / new_conversion);
+    } else if (metric == olsp::DistanceMode::TRAVEL_TIME && conversion != 0) {
         std::cout << "Conversion: " << conversion << std::endl;
         threshold = static_cast<int>(static_cast<double>(threshold) / conversion);
     }
@@ -180,121 +184,153 @@ void benchmark() {
     int small_threshold = 40000;
     int big_threshold = 125000;
 
+    // average conversion_rate over 8 runs
+    double stuttgart_conversion = 0.22345675;
+    double bw_conversion = 0.221872;
+    // average conversion_rate over 3 runs
+    double germany_conversion = 0.229944333;
     // Stuttgart IN_OUT
     {
         std::cout << "Stuttgart Graph with IN_OUT and TravelTime." << std::endl;
-        singleBenchmark(stuttgart_path, olsp::DistanceMode::TRAVEL_TIME, olsp::Heuristic::IN_OUT, small_threshold);
+        singleBenchmark(stuttgart_path, olsp::DistanceMode::TRAVEL_TIME, olsp::Heuristic::IN_OUT, small_threshold,
+                        stuttgart_conversion);
     }
 
+    /*
     {
         std::cout << "Stuttgart Graph with IN_OUT and Meter-Metric." << std::endl;
         singleBenchmark(stuttgart_path, olsp::DistanceMode::DISTANCE_METERS, olsp::Heuristic::IN_OUT, small_threshold);
     }
+    */
 
     // Stuttgart Edge Difference
     {
         std::cout << "Stuttgart Graph with EDGE_DIFFERENCE and TravelTime." << std::endl;
         singleBenchmark(stuttgart_path, olsp::DistanceMode::TRAVEL_TIME, olsp::Heuristic::EDGE_DIFFERENCE,
-                        small_threshold);
+                        small_threshold, stuttgart_conversion);
     }
 
+    /*
     {
         std::cout << "Stuttgart Graph with EDGE_DIFFERENCE and Meter-Metric." << std::endl;
         singleBenchmark(stuttgart_path, olsp::DistanceMode::DISTANCE_METERS, olsp::Heuristic::EDGE_DIFFERENCE,
                         small_threshold);
     }
+    */
 
     // Stuttgart weighted Cost
     {
         std::cout << "Stuttgart Graph with WEIGHTED_COST and TravelTime." << std::endl;
         singleBenchmark(stuttgart_path, olsp::DistanceMode::TRAVEL_TIME, olsp::Heuristic::WEIGHTED_COST,
-                        small_threshold);
+                        small_threshold, stuttgart_conversion);
     }
 
+    /*
     {
         std::cout << "Stuttgart Graph with WEIGHTED_COST and Meter-Metric." << std::endl;
         singleBenchmark(stuttgart_path, olsp::DistanceMode::DISTANCE_METERS, olsp::Heuristic::WEIGHTED_COST,
                         small_threshold);
     }
+    */
 
     // Stuttgart microsoft
     {
         std::cout << "Stuttgart Graph with MICROSOFT and TravelTime." << std::endl;
-        singleBenchmark(stuttgart_path, olsp::DistanceMode::TRAVEL_TIME, olsp::Heuristic::MICROSOFT, small_threshold);
+        singleBenchmark(stuttgart_path, olsp::DistanceMode::TRAVEL_TIME, olsp::Heuristic::MICROSOFT, small_threshold,
+                        stuttgart_conversion);
     }
 
+    /*
     {
         std::cout << "Stuttgart Graph with MICROSOFT and Meter-Metric." << std::endl;
         singleBenchmark(stuttgart_path, olsp::DistanceMode::DISTANCE_METERS, olsp::Heuristic::MICROSOFT,
                         small_threshold);
     }
+    */
 
     // BW IN_OUT
     {
         std::cout << "BW Graph with IN_OUT and TravelTime." << std::endl;
-        singleBenchmark(bw_path, olsp::DistanceMode::TRAVEL_TIME, olsp::Heuristic::IN_OUT, big_threshold);
+        singleBenchmark(bw_path, olsp::DistanceMode::TRAVEL_TIME, olsp::Heuristic::IN_OUT, big_threshold,
+                        bw_conversion);
     }
 
+    /*
     {
         std::cout << "BW Graph with IN_OUT and Meter-Metric." << std::endl;
         singleBenchmark(bw_path, olsp::DistanceMode::DISTANCE_METERS, olsp::Heuristic::IN_OUT, big_threshold);
     }
+    */
 
     // BW Edge Difference
     {
         std::cout << "BW Graph with edge difference and TravelTime." << std::endl;
-        singleBenchmark(bw_path, olsp::DistanceMode::TRAVEL_TIME, olsp::Heuristic::EDGE_DIFFERENCE, big_threshold);
+        singleBenchmark(bw_path, olsp::DistanceMode::TRAVEL_TIME, olsp::Heuristic::EDGE_DIFFERENCE, big_threshold,
+                        bw_conversion);
     }
 
+    /*
     {
         std::cout << "BW Graph with edge difference and Meter-Metric." << std::endl;
         singleBenchmark(bw_path, olsp::DistanceMode::DISTANCE_METERS, olsp::Heuristic::EDGE_DIFFERENCE, big_threshold);
     }
+    */
 
     // BW weighted Cost
     {
         std::cout << "BW Graph with weighted cost and TravelTime." << std::endl;
-        singleBenchmark(bw_path, olsp::DistanceMode::TRAVEL_TIME, olsp::Heuristic::WEIGHTED_COST, big_threshold);
+        singleBenchmark(bw_path, olsp::DistanceMode::TRAVEL_TIME, olsp::Heuristic::WEIGHTED_COST, big_threshold,
+                        bw_conversion);
     }
 
+    /*
     {
         std::cout << "BW Graph with weighted cost and Meter-Metric." << std::endl;
         singleBenchmark(bw_path, olsp::DistanceMode::DISTANCE_METERS, olsp::Heuristic::WEIGHTED_COST, big_threshold);
     }
+    */
 
     // BW microsoft
     {
         std::cout << "BW Graph with Microsoft and TravelTime." << std::endl;
-        singleBenchmark(bw_path, olsp::DistanceMode::TRAVEL_TIME, olsp::Heuristic::MICROSOFT, big_threshold);
+        singleBenchmark(bw_path, olsp::DistanceMode::TRAVEL_TIME, olsp::Heuristic::MICROSOFT, big_threshold,
+                        bw_conversion);
     }
 
+    /*
     {
         std::cout << "BW Graph with Microsoft and Meter-Metric." << std::endl;
         singleBenchmark(bw_path, olsp::DistanceMode::DISTANCE_METERS, olsp::Heuristic::MICROSOFT, big_threshold);
     }
+    */
 
     // Germnay weighted Cost
     {
         std::cout << "Germany Graph with weighted cost and TravelTime." << std::endl;
-        singleBenchmark(germany_path, olsp::DistanceMode::TRAVEL_TIME, olsp::Heuristic::WEIGHTED_COST, big_threshold);
+        singleBenchmark(germany_path, olsp::DistanceMode::TRAVEL_TIME, olsp::Heuristic::WEIGHTED_COST, big_threshold,
+                        germany_conversion);
     }
-
+    /*
     {
         std::cout << "Germany Graph with weighted cost and Meter-Metric." << std::endl;
         singleBenchmark(germany_path, olsp::DistanceMode::DISTANCE_METERS, olsp::Heuristic::WEIGHTED_COST,
                         big_threshold);
     }
+    */
 
     // Germany microsoft
     {
         std::cout << "Germany Graph with Microsoft and TravelTime." << std::endl;
-        singleBenchmark(germany_path, olsp::DistanceMode::TRAVEL_TIME, olsp::Heuristic::MICROSOFT, big_threshold);
+        singleBenchmark(germany_path, olsp::DistanceMode::TRAVEL_TIME, olsp::Heuristic::MICROSOFT, big_threshold,
+                        germany_conversion);
     }
 
+    /*
     {
         std::cout << "Germany Graph with Microsoft and Meter-Metric." << std::endl;
         singleBenchmark(germany_path, olsp::DistanceMode::DISTANCE_METERS, olsp::Heuristic::MICROSOFT, big_threshold);
     }
+    */
 }
 
 void germanyBenchmark() {
