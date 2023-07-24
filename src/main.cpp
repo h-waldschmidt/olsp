@@ -366,6 +366,6 @@ void germanyBenchmark() {
 int main(int argc, char *argv[]) {
     omp_set_num_threads(14);
 
-    germanyBenchmark();
+    benchmark();
     return 0;
 }
