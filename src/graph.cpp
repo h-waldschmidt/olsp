@@ -183,7 +183,7 @@ int Graph::dijkstraQuery(std::vector<std::vector<Edge>>& graph, int start, int e
         if (cur_node.second == end) return distances[end];
 
         for (Edge& e : graph[cur_node.second]) {
-            if (!visited[e.m_target] && distances[e.m_target] > distances[cur_node.second] + e.m_cost) {
+            if (!visited[e.m_target] || distances[e.m_target] > distances[cur_node.second] + e.m_cost) {
                 distances[e.m_target] = distances[cur_node.second] + e.m_cost;
                 pq.push(std::make_pair(distances[e.m_target], e.m_target));
             }
@@ -805,7 +805,7 @@ bool Graph::forwardDijkstraSearch(LowerBoundData& lb_data) {
             !cur_node.second.second)
             return true;
 
-        if (static_cast<double>(cur_node.first) > static_cast<double>(lb_data.m_threshold) * 0.5) break;
+        if (static_cast<double>(cur_node.first) > static_cast<double>(lb_data.m_threshold) * 0.45) break;
 
         for (Edge& e : m_graph[cur_node.second.first]) {
             if (m_node_level[cur_node.second.first] > m_node_level[e.m_target]) continue;
@@ -848,7 +848,7 @@ bool Graph::backwardDijkstraSearch(LowerBoundData& lb_data) {
             !cur_node.second.second)
             return true;
 
-        if (static_cast<double>(cur_node.first) > static_cast<double>(lb_data.m_threshold) * 0.5) break;
+        if (static_cast<double>(cur_node.first) > static_cast<double>(lb_data.m_threshold) * 0.45) break;
 
         for (Edge& e : m_reverse_graph[cur_node.second.first]) {
             if (m_node_level[cur_node.second.first] < m_node_level[e.m_target]) continue;
