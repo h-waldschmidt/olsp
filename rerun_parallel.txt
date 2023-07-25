@@ -11,3 +11,220 @@ Started creating reverse graph.
 Finished creating reverse graph. Took 676 milliseconds 
 Graph Memory usage in kb: 1312936
 Started creating hub labels.
+Finished creating hub labels. Took 14233 milliseconds 
+Graph and Label Memory usage in kb: 3452700
+Avg. Label Size: 90
+Max Label Size: 190
+Started creating Path Cover.
+Finished creating Path Cover. Took 2029 milliseconds
+Path cover size: 1043
+Started calculating Lower Bound.
+Finished calculating Lower Bound. Took 181 seconds
+Lower bound size: 152
+Stuttgart Graph with EDGE_DIFFERENCE and TravelTime.
+Conversion: 0.223457
+Threshold: 179005
+Started reading graph file.
+Finished reading graph file. Took 1305 milliseconds 
+Started creating CH.
+Started creating reverse graph.
+Finished creating reverse graph. Took 179 milliseconds 
+Finished creating CH. Took 10 seconds
+Started creating reverse graph.
+Finished creating reverse graph. Took 684 milliseconds 
+Graph Memory usage in kb: 1454672
+Started creating hub labels.
+Finished creating hub labels. Took 11136 milliseconds 
+Graph and Label Memory usage in kb: 3551832
+Avg. Label Size: 73
+Max Label Size: 147
+Started creating Path Cover.
+Finished creating Path Cover. Took 1498 milliseconds
+Path cover size: 1024
+Started calculating Lower Bound.
+Finished calculating Lower Bound. Took 177 seconds
+Lower bound size: 141
+Stuttgart Graph with WEIGHTED_COST and TravelTime.
+Conversion: 0.223457
+Threshold: 179005
+Started reading graph file.
+Finished reading graph file. Took 1305 milliseconds 
+Started creating CH.
+Started creating reverse graph.
+Finished creating reverse graph. Took 178 milliseconds 
+Finished creating CH. Took 20 seconds
+Started creating reverse graph.
+Finished creating reverse graph. Took 729 milliseconds 
+Graph Memory usage in kb: 1476792
+Started creating hub labels.
+Finished creating hub labels. Took 10662 milliseconds 
+Graph and Label Memory usage in kb: 3573952
+Avg. Label Size: 68
+Max Label Size: 157
+Started creating Path Cover.
+Finished creating Path Cover. Took 1347 milliseconds
+Path cover size: 889
+Started calculating Lower Bound.
+Finished calculating Lower Bound. Took 149 seconds
+Lower bound size: 136
+Stuttgart Graph with MICROSOFT and TravelTime.
+Conversion: 0.223457
+Threshold: 179005
+Started reading graph file.
+Finished reading graph file. Took 1323 milliseconds 
+Started creating CH.
+Started creating reverse graph.
+Finished creating reverse graph. Took 178 milliseconds 
+Finished creating CH. Took 16 seconds
+Started creating reverse graph.
+Finished creating reverse graph. Took 696 milliseconds 
+Graph Memory usage in kb: 1483824
+Started creating hub labels.
+Finished creating hub labels. Took 7702 milliseconds 
+Graph and Label Memory usage in kb: 2532408
+Avg. Label Size: 56
+Max Label Size: 127
+Started creating Path Cover.
+Finished creating Path Cover. Took 957 milliseconds
+Path cover size: 713
+Started calculating Lower Bound.
+Finished calculating Lower Bound. Took 119 seconds
+Lower bound size: 104
+BW Graph with IN_OUT and TravelTime.
+Conversion: 0.221872
+Threshold: 563387
+Started reading graph file.
+Finished reading graph file. Took 4261 milliseconds 
+Started creating CH.
+Started creating reverse graph.
+Finished creating reverse graph. Took 618 milliseconds 
+Finished creating CH. Took 19 seconds
+Started creating reverse graph.
+Finished creating reverse graph. Took 2361 milliseconds 
+Graph Memory usage in kb: 2489240
+Started creating hub labels.
+Finished creating hub labels. Took 77735 milliseconds 
+Graph and Label Memory usage in kb: 10877856
+Avg. Label Size: 133
+Max Label Size: 244
+Started creating Path Cover.
+Finished creating Path Cover. Took 7706 milliseconds
+Path cover size: 651
+Started calculating Lower Bound.
+Finished calculating Lower Bound. Took 589 seconds
+Lower bound size: 52
+BW Graph with edge difference and TravelTime.
+Conversion: 0.221872
+Threshold: 563387
+Started reading graph file.
+Finished reading graph file. Took 4114 milliseconds 
+Started creating CH.
+Started creating reverse graph.
+Finished creating reverse graph. Took 601 milliseconds 
+Finished creating CH. Took 37 seconds
+Started creating reverse graph.
+Finished creating reverse graph. Took 2444 milliseconds 
+Graph Memory usage in kb: 2559840
+Started creating hub labels.
+Finished creating hub labels. Took 51291 milliseconds 
+Graph and Label Memory usage in kb: 10948456
+Avg. Label Size: 97
+Max Label Size: 222
+Started creating Path Cover.
+Finished creating Path Cover. Took 4962 milliseconds
+Path cover size: 491
+Started calculating Lower Bound.
+Finished calculating Lower Bound. Took 425 seconds
+Lower bound size: 47
+BW Graph with weighted cost and TravelTime.
+Conversion: 0.221872
+Threshold: 563387
+Started reading graph file.
+Finished reading graph file. Took 4125 milliseconds 
+Started creating CH.
+Started creating reverse graph.
+Finished creating reverse graph. Took 599 milliseconds 
+Finished creating CH. Took 77 seconds
+Started creating reverse graph.
+Finished creating reverse graph. Took 2541 milliseconds 
+Graph Memory usage in kb: 2586476
+Started creating hub labels.
+Finished creating hub labels. Took 45772 milliseconds 
+Graph and Label Memory usage in kb: 10975092
+Avg. Label Size: 87
+Max Label Size: 178
+Started creating Path Cover.
+Finished creating Path Cover. Took 3400 milliseconds
+Path cover size: 422
+Started calculating Lower Bound.
+Finished calculating Lower Bound. Took 404 seconds
+Lower bound size: 40
+BW Graph with Microsoft and TravelTime.
+Conversion: 0.221872
+Threshold: 563387
+Started reading graph file.
+Finished reading graph file. Took 4245 milliseconds 
+Started creating CH.
+Started creating reverse graph.
+Finished creating reverse graph. Took 608 milliseconds 
+Finished creating CH. Took 60 seconds
+Started creating reverse graph.
+Finished creating reverse graph. Took 2401 milliseconds 
+Graph Memory usage in kb: 2583824
+Started creating hub labels.
+Finished creating hub labels. Took 33980 milliseconds 
+Graph and Label Memory usage in kb: 8875288
+Avg. Label Size: 74
+Max Label Size: 135
+Started creating Path Cover.
+Finished creating Path Cover. Took 2865 milliseconds
+Path cover size: 374
+Started calculating Lower Bound.
+Finished calculating Lower Bound. Took 319 seconds
+Lower bound size: 39
+Germany Graph with weighted cost and TravelTime.
+Conversion: 0.229944
+Threshold: 543609
+Started reading graph file.
+Finished reading graph file. Took 28944 milliseconds 
+Started creating CH.
+Started creating reverse graph.
+Finished creating reverse graph. Took 5790 milliseconds 
+Finished creating CH. Took 753 seconds
+Started creating reverse graph.
+Finished creating reverse graph. Took 22211 milliseconds 
+Graph Memory usage in kb: 8637156
+Started creating hub labels.
+Finished creating hub labels. Took 661392 milliseconds 
+Graph and Label Memory usage in kb: 76367644
+Avg. Label Size: 139
+Max Label Size: 298
+Started creating Path Cover.
+Finished creating Path Cover. Took 63580 milliseconds
+Path cover size: 3836
+Started calculating Lower Bound.
+Finished calculating Lower Bound. Took 16162 seconds
+Lower bound size: 476
+Germany Graph with Microsoft and TravelTime.
+Conversion: 0.229944
+Threshold: 543609
+Started reading graph file.
+Finished reading graph file. Took 29652 milliseconds 
+Started creating CH.
+Started creating reverse graph.
+Finished creating reverse graph. Took 5285 milliseconds 
+Finished creating CH. Took 591 seconds
+Started creating reverse graph.
+Finished creating reverse graph. Took 21243 milliseconds 
+Graph Memory usage in kb: 8801656
+Started creating hub labels.
+Finished creating hub labels. Took 462906 milliseconds 
+Graph and Label Memory usage in kb: 76335928
+Avg. Label Size: 117
+Max Label Size: 239
+Started creating Path Cover.
+Finished creating Path Cover. Took 50893 milliseconds
+Path cover size: 3280
+Started calculating Lower Bound.
+Finished calculating Lower Bound. Took 13023 seconds
+Lower bound size: 411
