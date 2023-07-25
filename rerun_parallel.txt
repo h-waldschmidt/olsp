@@ -1,0 +1,13 @@
+Stuttgart Graph with IN_OUT and TravelTime.
+Conversion: 0.223457
+Threshold: 179005
+Started reading graph file.
+Finished reading graph file. Took 1316 milliseconds 
+Started creating CH.
+Started creating reverse graph.
+Finished creating reverse graph. Took 192 milliseconds 
+Finished creating CH. Took 5 seconds
+Started creating reverse graph.
+Finished creating reverse graph. Took 676 milliseconds 
+Graph Memory usage in kb: 1312936
+Started creating hub labels.
