@@ -705,14 +705,14 @@ std::vector<int> Graph::createShortestPathCover(int threshold) {
 
     std::unordered_set<int> path_cover_set;
     for (auto& fwd_labels : m_fwd_hub_labels) {
-        if (fwd_labels.second > static_cast<double>(threshold) * (static_cast<double>(5) / static_cast<double>(10)) &&
-            fwd_labels.second < threshold)
+        if (fwd_labels.second >= static_cast<double>(threshold) * (static_cast<double>(5) / static_cast<double>(10)) &&
+            fwd_labels.second <= threshold)
             path_cover_set.emplace(fwd_labels.first);
     }
 
     for (auto& bwd_labels : m_bwd_hub_labels) {
-        if (bwd_labels.second > static_cast<double>(threshold) * (static_cast<double>(5) / static_cast<double>(10)) &&
-            bwd_labels.second < threshold)
+        if (bwd_labels.second >= static_cast<double>(threshold) * (static_cast<double>(5) / static_cast<double>(10)) &&
+            bwd_labels.second <= threshold)
             path_cover_set.emplace(bwd_labels.first);
     }
 
