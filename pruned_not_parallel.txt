@@ -1,0 +1,330 @@
+Stuttgart Graph with IN_OUT and TravelTime.
+Conversion: 0.223457
+Threshold: 179005
+Started reading graph file.
+Finished reading graph file. Took 1433 milliseconds 
+Started creating CH.
+Started creating reverse graph.
+Finished creating reverse graph. Took 213 milliseconds 
+Finished creating CH. Took 4 seconds
+Started creating reverse graph.
+Finished creating reverse graph. Took 801 milliseconds 
+Graph Memory usage in kb: 304356
+Started creating hub labels.
+Finished creating hub labels. Took 61655 milliseconds 
+Graph and Label Memory usage in kb: 2428076
+Avg. Label Size: 71
+Max Label Size: 163
+Stuttgart Graph with IN_OUT and Meter-Metric.
+Threshold: 40000
+Started reading graph file.
+Finished reading graph file. Took 2351 milliseconds 
+Started creating CH.
+Started creating reverse graph.
+Finished creating reverse graph. Took 175 milliseconds 
+Finished creating CH. Took 5 seconds
+Started creating reverse graph.
+Finished creating reverse graph. Took 788 milliseconds 
+Graph Memory usage in kb: 328736
+Started creating hub labels.
+Finished creating hub labels. Took 73689 milliseconds 
+Graph and Label Memory usage in kb: 2482164
+Avg. Label Size: 78
+Max Label Size: 189
+Stuttgart Graph with EDGE_DIFFERENCE and TravelTime.
+Conversion: 0.223457
+Threshold: 179005
+Started reading graph file.
+Finished reading graph file. Took 1386 milliseconds 
+Started creating CH.
+Started creating reverse graph.
+Finished creating reverse graph. Took 181 milliseconds 
+Finished creating CH. Took 9 seconds
+Started creating reverse graph.
+Finished creating reverse graph. Took 834 milliseconds 
+Graph Memory usage in kb: 331500
+Started creating hub labels.
+Finished creating hub labels. Took 56237 milliseconds 
+Graph and Label Memory usage in kb: 2484944
+Avg. Label Size: 65
+Max Label Size: 182
+Stuttgart Graph with EDGE_DIFFERENCE and Meter-Metric.
+Threshold: 40000
+Started reading graph file.
+Finished reading graph file. Took 2575 milliseconds 
+Started creating CH.
+Started creating reverse graph.
+Finished creating reverse graph. Took 188 milliseconds 
+Finished creating CH. Took 12 seconds
+Started creating reverse graph.
+Finished creating reverse graph. Took 892 milliseconds 
+Graph Memory usage in kb: 336260
+Started creating hub labels.
+Finished creating hub labels. Took 74058 milliseconds 
+Graph and Label Memory usage in kb: 2489736
+Avg. Label Size: 76
+Max Label Size: 204
+Stuttgart Graph with WEIGHTED_COST and TravelTime.
+Conversion: 0.223457
+Threshold: 179005
+Started reading graph file.
+Finished reading graph file. Took 1380 milliseconds 
+Started creating CH.
+Started creating reverse graph.
+Finished creating reverse graph. Took 178 milliseconds 
+Finished creating CH. Took 14 seconds
+Started creating reverse graph.
+Finished creating reverse graph. Took 839 milliseconds 
+Graph Memory usage in kb: 352008
+Started creating hub labels.
+Finished creating hub labels. Took 61020 milliseconds 
+Graph and Label Memory usage in kb: 1982212
+Avg. Label Size: 59
+Max Label Size: 146
+Stuttgart Graph with WEIGHTED_COST and Meter-Metric.
+Threshold: 40000
+Started reading graph file.
+Finished reading graph file. Took 2559 milliseconds 
+Started creating CH.
+Started creating reverse graph.
+Finished creating reverse graph. Took 181 milliseconds 
+Finished creating CH. Took 13 seconds
+Started creating reverse graph.
+Finished creating reverse graph. Took 841 milliseconds 
+Graph Memory usage in kb: 352044
+Started creating hub labels.
+Finished creating hub labels. Took 72162 milliseconds 
+Graph and Label Memory usage in kb: 2461820
+Avg. Label Size: 69
+Max Label Size: 158
+Stuttgart Graph with MICROSOFT and TravelTime.
+Conversion: 0.223457
+Threshold: 179005
+Started reading graph file.
+Finished reading graph file. Took 1392 milliseconds 
+Started creating CH.
+Started creating reverse graph.
+Finished creating reverse graph. Took 181 milliseconds 
+Finished creating CH. Took 36 seconds
+Started creating reverse graph.
+Finished creating reverse graph. Took 868 milliseconds 
+Graph Memory usage in kb: 375364
+Started creating hub labels.
+Finished creating hub labels. Took 50005 milliseconds 
+Graph and Label Memory usage in kb: 2005604
+Avg. Label Size: 59
+Max Label Size: 183
+Stuttgart Graph with MICROSOFT and Meter-Metric.
+Threshold: 40000
+Started reading graph file.
+Finished reading graph file. Took 2368 milliseconds 
+Started creating CH.
+Started creating reverse graph.
+Finished creating reverse graph. Took 171 milliseconds 
+Finished creating CH. Took 47 seconds
+Started creating reverse graph.
+Finished creating reverse graph. Took 863 milliseconds 
+Graph Memory usage in kb: 392732
+Started creating hub labels.
+Finished creating hub labels. Took 70821 milliseconds 
+Graph and Label Memory usage in kb: 2546224
+Avg. Label Size: 70
+Max Label Size: 175
+BW Graph with IN_OUT and TravelTime.
+Conversion: 0.221872
+Threshold: 563387
+Started reading graph file.
+Finished reading graph file. Took 4191 milliseconds 
+Started creating CH.
+Started creating reverse graph.
+Finished creating reverse graph. Took 620 milliseconds 
+Finished creating CH. Took 17 seconds
+Started creating reverse graph.
+Finished creating reverse graph. Took 2813 milliseconds 
+Graph Memory usage in kb: 955988
+Started creating hub labels.
+Finished creating hub labels. Took 540927 milliseconds 
+Graph and Label Memory usage in kb: 9472560
+Avg. Label Size: 127
+Max Label Size: 339
+BW Graph with IN_OUT and Meter-Metric.
+Threshold: 125000
+Started reading graph file.
+Finished reading graph file. Took 7452 milliseconds 
+Started creating CH.
+Started creating reverse graph.
+Finished creating reverse graph. Took 595 milliseconds 
+Finished creating CH. Took 20 seconds
+Started creating reverse graph.
+Finished creating reverse graph. Took 2814 milliseconds 
+Graph Memory usage in kb: 980164
+Started creating hub labels.
+Finished creating hub labels. Took 720117 milliseconds 
+Graph and Label Memory usage in kb: 9496776
+Avg. Label Size: 146
+Max Label Size: 314
+BW Graph with edge difference and TravelTime.
+Conversion: 0.221872
+Threshold: 563387
+Started reading graph file.
+Finished reading graph file. Took 4074 milliseconds 
+Started creating CH.
+Started creating reverse graph.
+Finished creating reverse graph. Took 600 milliseconds 
+Finished creating CH. Took 37 seconds
+Started creating reverse graph.
+Finished creating reverse graph. Took 2983 milliseconds 
+Graph Memory usage in kb: 1019852
+Started creating hub labels.
+Finished creating hub labels. Took 398414 milliseconds 
+Graph and Label Memory usage in kb: 9507788
+Avg. Label Size: 100
+Max Label Size: 291
+BW Graph with edge difference and Meter-Metric.
+Threshold: 125000
+Started reading graph file.
+Finished reading graph file. Took 7943 milliseconds 
+Started creating CH.
+Started creating reverse graph.
+Finished creating reverse graph. Took 657 milliseconds 
+Finished creating CH. Took 47 seconds
+Started creating reverse graph.
+Finished creating reverse graph. Took 3136 milliseconds 
+Graph Memory usage in kb: 1062100
+Started creating hub labels.
+Finished creating hub labels. Took 597561 milliseconds 
+Graph and Label Memory usage in kb: 9524088
+Avg. Label Size: 127
+Max Label Size: 311
+BW Graph with weighted cost and TravelTime.
+Conversion: 0.221872
+Threshold: 563387
+Started reading graph file.
+Finished reading graph file. Took 4130 milliseconds 
+Started creating CH.
+Started creating reverse graph.
+Finished creating reverse graph. Took 602 milliseconds 
+Finished creating CH. Took 51 seconds
+Started creating reverse graph.
+Finished creating reverse graph. Took 3377 milliseconds 
+Graph Memory usage in kb: 1078400
+Started creating hub labels.
+Finished creating hub labels. Took 350988 milliseconds 
+Graph and Label Memory usage in kb: 9562712
+Avg. Label Size: 83
+Max Label Size: 204
+BW Graph with weighted cost and Meter-Metric.
+Threshold: 125000
+Started reading graph file.
+Finished reading graph file. Took 8360 milliseconds 
+Started creating CH.
+Started creating reverse graph.
+Finished creating reverse graph. Took 650 milliseconds 
+Finished creating CH. Took 51 seconds
+Started creating reverse graph.
+Finished creating reverse graph. Took 2834 milliseconds 
+Graph Memory usage in kb: 1079628
+Started creating hub labels.
+Finished creating hub labels. Took 514614 milliseconds 
+Graph and Label Memory usage in kb: 9579784
+Avg. Label Size: 114
+Max Label Size: 243
+BW Graph with Microsoft and TravelTime.
+Conversion: 0.221872
+Threshold: 563387
+Started reading graph file.
+Finished reading graph file. Took 3980 milliseconds 
+Started creating CH.
+Started creating reverse graph.
+Finished creating reverse graph. Took 589 milliseconds 
+Finished creating CH. Took 129 seconds
+Started creating reverse graph.
+Finished creating reverse graph. Took 2822 milliseconds 
+Graph Memory usage in kb: 1157772
+Started creating hub labels.
+Finished creating hub labels. Took 293319 milliseconds 
+Graph and Label Memory usage in kb: 9645688
+Avg. Label Size: 87
+Max Label Size: 247
+BW Graph with Microsoft and Meter-Metric.
+Threshold: 125000
+Started reading graph file.
+Finished reading graph file. Took 7356 milliseconds 
+Started creating CH.
+Started creating reverse graph.
+Finished creating reverse graph. Took 574 milliseconds 
+Finished creating CH. Took 192 seconds
+Started creating reverse graph.
+Finished creating reverse graph. Took 2851 milliseconds 
+Graph Memory usage in kb: 1224204
+Started creating hub labels.
+Finished creating hub labels. Took 514198 milliseconds 
+Graph and Label Memory usage in kb: 9724416
+Avg. Label Size: 118
+Max Label Size: 261
+Germany Graph with weighted cost and TravelTime.
+Conversion: 0.229944
+Threshold: 543609
+Started reading graph file.
+Finished reading graph file. Took 27675 milliseconds 
+Started creating CH.
+Started creating reverse graph.
+Finished creating reverse graph. Took 5638 milliseconds 
+Finished creating CH. Took 432 seconds
+Started creating reverse graph.
+Finished creating reverse graph. Took 25223 milliseconds 
+Graph Memory usage in kb: 7007652
+Started creating hub labels.
+Finished creating hub labels. Took 3566540 milliseconds 
+Graph and Label Memory usage in kb: 74758528
+Avg. Label Size: 102
+Max Label Size: 287
+Germany Graph with weighted cost and Meter-Metric.
+Threshold: 125000
+Started reading graph file.
+Finished reading graph file. Took 51262 milliseconds 
+Started creating CH.
+Started creating reverse graph.
+Finished creating reverse graph. Took 5156 milliseconds 
+Finished creating CH. Took 490 seconds
+Started creating reverse graph.
+Finished creating reverse graph. Took 24748 milliseconds 
+Graph Memory usage in kb: 7370396
+Started creating hub labels.
+Finished creating hub labels. Took 6249837 milliseconds 
+Graph and Label Memory usage in kb: 74871700
+Avg. Label Size: 141
+Max Label Size: 347
+Germany Graph with Microsoft and TravelTime.
+Conversion: 0.229944
+Threshold: 543609
+Started reading graph file.
+Finished reading graph file. Took 27906 milliseconds 
+Started creating CH.
+Started creating reverse graph.
+Finished creating reverse graph. Took 5084 milliseconds 
+Finished creating CH. Took 2292 seconds
+Started creating reverse graph.
+Finished creating reverse graph. Took 24298 milliseconds 
+Graph Memory usage in kb: 8005912
+Started creating hub labels.
+Finished creating hub labels. Took 4588208 milliseconds 
+Graph and Label Memory usage in kb: 75507216
+Avg. Label Size: 125
+Max Label Size: 454
+Germany Graph with Microsoft and Meter-Metric.
+Threshold: 125000
+Started reading graph file.
+Finished reading graph file. Took 52939 milliseconds 
+Started creating CH.
+Started creating reverse graph.
+Finished creating reverse graph. Took 5105 milliseconds 
+Finished creating CH. Took 4797 seconds
+Started creating reverse graph.
+Finished creating reverse graph. Took 24570 milliseconds 
+Graph Memory usage in kb: 8545764
+Started creating hub labels.
+Finished creating hub labels. Took 7222480 milliseconds 
+Graph and Label Memory usage in kb: 76047068
+Avg. Label Size: 157
+Max Label Size: 471
