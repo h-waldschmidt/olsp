@@ -334,7 +334,7 @@ void Graph::bidirectionalDijkstraGetPath(QueryData& data) {
     }
 }
 
-void Graph::contractionHierachyQuery(QueryData& data) {
+void Graph::contractionHierarchyQuery(QueryData& data) {
     if (data.m_start < 0 || data.m_end < 0) {
         std::cout << "Invalid start or end nodes!" << std::endl;
         return;
@@ -467,7 +467,7 @@ void Graph::createHubLabelsWithoutIS(int threshold) {
     auto begin = std::chrono::high_resolution_clock::now();
 
     if (m_graph.empty() || m_reverse_graph.empty()) {
-        std::cout << "Can't create hub labels, because graph or reverse grpah is empty" << std::endl;
+        std::cout << "Can't create hub labels, because graph or reverse graph is empty" << std::endl;
         return;
     }
 
@@ -488,7 +488,7 @@ void Graph::createHubLabelsWithoutIS(int threshold) {
 
     m_node_indices.clear();
     m_node_indices.resize(m_num_nodes);
-    // save for each node its correspnding index
+    // save for each node its corresponding index
     for (int i = 0; i < m_num_nodes; ++i) {
         m_node_indices[m_level_indices_sorted[i]] = i;
     }
@@ -516,7 +516,7 @@ void Graph::createHubLabelsWithoutIS(int threshold) {
         int test_1 = m_node_indices[node];
         int test_2 = m_level_indices_sorted[i];
 
-        // fwd lables
+        // fwd labels
         for (Edge& e : m_graph[node]) {
             if (m_node_level[node] >= m_node_level[e.m_target]) continue;
 
@@ -553,7 +553,7 @@ void Graph::createHubLabelsWithoutIS(int threshold) {
                 ++iter;
         }
 
-        // bwd lables
+        // bwd labels
         for (Edge& e : m_reverse_graph[node]) {
             if (m_node_level[node] >= m_node_level[e.m_target]) continue;
 
@@ -610,7 +610,7 @@ void Graph::createHubLabelsWithIS(int threshold) {
     auto begin = std::chrono::high_resolution_clock::now();
 
     if (m_graph.empty() || m_reverse_graph.empty()) {
-        std::cout << "Can't create hub labels, because graph or reverse grpah is empty" << std::endl;
+        std::cout << "Can't create hub labels, because graph or reverse graph is empty" << std::endl;
         return;
     }
 
@@ -648,7 +648,7 @@ void Graph::createHubLabelsWithIS(int threshold) {
 
     m_node_indices.clear();
     m_node_indices.resize(m_num_nodes);
-    // save for each node its correspnding index
+    // save for each node its corresponding index
     for (int i = 0; i < m_num_nodes; ++i) {
         m_node_indices[m_level_indices_sorted[i]] = i;
     }
@@ -675,7 +675,7 @@ void Graph::createHubLabelsWithIS(int threshold) {
             fwd_labels.push_back(std::make_pair(node, 0));
             bwd_labels.push_back(std::make_pair(node, 0));
 
-            // fwd lables
+            // fwd labels
             for (Edge& e : m_graph[node]) {
                 if (m_node_level[node] >= m_node_level[e.m_target]) continue;
 
@@ -713,7 +713,7 @@ void Graph::createHubLabelsWithIS(int threshold) {
                     ++iter;
             }
 
-            // bwd lables
+            // bwd labels
             for (Edge& e : m_reverse_graph[node]) {
                 if (m_node_level[node] >= m_node_level[e.m_target]) continue;
 
@@ -879,7 +879,7 @@ std::vector<int> Graph::createESC(int threshold) {
 }
 
 bool Graph::verifyShortestPathCover(std::vector<int>& esc_set, int threshold) {
-    std::cout << "Started verifiying path cover." << std::endl;
+    std::cout << "Started verifying path cover." << std::endl;
     auto begin = std::chrono::high_resolution_clock::now();
 
     LowerBoundData lb_data(m_num_nodes);
@@ -1213,8 +1213,8 @@ void Graph::createCHwithoutIS(Heuristic heuristic) {
     m_contr_data.resize(1);
 
     m_contr_data[0] = ContractionData(m_num_nodes);
-    m_contr_data[0].m_num_contracted_neighbours.clear();
-    m_contr_data[0].m_num_contracted_neighbours.resize(m_num_nodes, 0);
+    m_contr_data[0].m_num_contracted_neighbors.clear();
+    m_contr_data[0].m_num_contracted_neighbors.resize(m_num_nodes, 0);
 
     // initialize importance for all nodes
     std::priority_queue<std::pair<int, int>, std::vector<std::pair<int, int>>, std::greater<std::pair<int, int>>>
@@ -1333,7 +1333,7 @@ void Graph::createCHwithIS(Heuristic heuristic) {
     m_contr_data.resize(m_num_threads);
     for (int i = 0; i < m_num_threads; ++i) {
         m_contr_data[i] = ContractionData(m_num_nodes);
-        m_contr_data[i].m_num_contracted_neighbours.resize(m_num_nodes);
+        m_contr_data[i].m_num_contracted_neighbors.resize(m_num_nodes);
     }
 
     // initialize importance for all nodes
@@ -1454,8 +1454,8 @@ void Graph::createCHwithIS(Heuristic heuristic) {
             if (i == 0) continue;
 
             for (int j = 0; j < m_num_nodes; ++j) {
-                m_contr_data[0].m_num_contracted_neighbours[j] += m_contr_data[i].m_num_contracted_neighbours[j];
-                m_contr_data[i].m_num_contracted_neighbours[j] = 0;
+                m_contr_data[0].m_num_contracted_neighbors[j] += m_contr_data[i].m_num_contracted_neighbors[j];
+                m_contr_data[i].m_num_contracted_neighbors[j] = 0;
             }
         }
 
@@ -1479,16 +1479,16 @@ void Graph::createCHwithIS(Heuristic heuristic) {
 
 int Graph::inOutProductHeuristic(std::vector<bool>& contracted, int node) {
     int num_outgoing = 0;
-    int num_incomming = 0;
+    int num_incoming = 0;
 
     for (auto& outgoing : m_graph[node]) {
         if (!contracted[outgoing.m_target]) ++num_outgoing;
     }
 
     for (auto& incoming : m_reverse_graph[node]) {
-        if (!contracted[incoming.m_target]) ++num_incomming;
+        if (!contracted[incoming.m_target]) ++num_incoming;
     }
-    return num_outgoing * num_incomming;
+    return num_outgoing * num_incoming;
 }
 
 int Graph::edgeDifferenceHeuristic(std::vector<bool>& contracted, int node) {
@@ -1551,14 +1551,14 @@ int Graph::edgeDifferenceHeuristic(std::vector<bool>& contracted, int node) {
 
 int Graph::weightedCostHeuristic(std::vector<bool>& contracted, int node) {
     int num_outgoing = 0;
-    int num_incomming = 0;
+    int num_incoming = 0;
 
     for (auto& outgoing : m_graph[node]) {
         if (!contracted[outgoing.m_target]) ++num_outgoing;
     }
 
     for (auto& incoming : m_reverse_graph[node]) {
-        if (!contracted[incoming.m_target]) ++num_incomming;
+        if (!contracted[incoming.m_target]) ++num_incoming;
     }
 
     int max_cost = 0;
@@ -1608,20 +1608,20 @@ int Graph::weightedCostHeuristic(std::vector<bool>& contracted, int node) {
     for (int& num : m_contr_data[0].m_reset_outgoing) m_contr_data[0].m_outgoing[num] = false;
     m_contr_data[0].m_reset_outgoing.clear();
 
-    return 0.8 * max_cost + 0.2 * num_outgoing * num_incomming;
+    return 0.8 * max_cost + 0.2 * num_outgoing * num_incoming;
     // return max_cost;
 }
 
 int Graph::microsoftHeuristic(std::vector<bool>& contracted, int node, int cur_level) {
     int num_outgoing = 0;
-    int num_incomming = 0;
+    int num_incoming = 0;
 
     for (auto& outgoing : m_graph[node]) {
         if (!contracted[outgoing.m_target]) ++num_outgoing;
     }
 
     for (auto& incoming : m_reverse_graph[node]) {
-        if (!contracted[incoming.m_target]) ++num_incomming;
+        if (!contracted[incoming.m_target]) ++num_incoming;
     }
 
     int max_cost = 0;
@@ -1690,8 +1690,8 @@ int Graph::microsoftHeuristic(std::vector<bool>& contracted, int node, int cur_l
         ++max_neighbour_level;
 
     return static_cast<int>(0.001 * static_cast<double>(max_cost)) +
-           2 * (num_added_shortcuts - (num_incomming + num_outgoing)) +
-           1 * m_contr_data[0].m_num_contracted_neighbours[node] + 5 * max_neighbour_level + underlying_shortcuts;
+           2 * (num_added_shortcuts - (num_incoming + num_outgoing)) +
+           1 * m_contr_data[0].m_num_contracted_neighbors[node] + 5 * max_neighbour_level + underlying_shortcuts;
 }
 
 void Graph::contractNode(std::vector<bool>& contracted, int contracted_node, int thread_num) {
@@ -1704,7 +1704,7 @@ void Graph::contractNode(std::vector<bool>& contracted, int contracted_node, int
         if (contracted[outgoing.m_target]) continue;
         if (outgoing.m_cost > max_distance_out) max_distance_out = outgoing.m_cost;
 
-        ++m_contr_data[thread_num].m_num_contracted_neighbours[outgoing.m_target];
+        ++m_contr_data[thread_num].m_num_contracted_neighbors[outgoing.m_target];
 
         ++num_outgoing;
         m_contr_data[thread_num].m_reset_outgoing.push_back(outgoing.m_target);
@@ -1715,7 +1715,7 @@ void Graph::contractNode(std::vector<bool>& contracted, int contracted_node, int
         if (contracted[incoming.m_target]) continue;
         int max_distance = incoming.m_cost + max_distance_out;
 
-        ++m_contr_data[thread_num].m_num_contracted_neighbours[incoming.m_target];
+        ++m_contr_data[thread_num].m_num_contracted_neighbors[incoming.m_target];
 
         contractionDijkstra(incoming.m_target, contracted_node, contracted, num_outgoing, max_distance, thread_num);
 

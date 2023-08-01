@@ -71,12 +71,12 @@ double getConversionRate(std::string graph_path, olsp::Heuristic heuristic, bool
 
         data.m_start = start;
         data.m_end = end;
-        travel_time_graph.contractionHierachyQuery(data);
+        travel_time_graph.contractionHierarchyQuery(data);
         if (data.m_distance == std::numeric_limits<int>::max()) continue;
 
         avg_dist_travel_time += data.m_distance;
 
-        meter_graph.contractionHierachyQuery(data);
+        meter_graph.contractionHierarchyQuery(data);
         if (data.m_distance == std::numeric_limits<int>::max()) continue;
 
         avg_dist_meter += data.m_distance;
@@ -107,7 +107,7 @@ void example() {
     }
     {
         olsp::QueryData bd_data(377371, 754742, g.getNumNodes(), false);
-        g.contractionHierachyQuery(bd_data);
+        g.contractionHierarchyQuery(bd_data);
         std::cout << "Distance: " << bd_data.m_distance << std::endl;
         std::cout << bd_data.m_meeting_node << std::endl;
         // g.bidirectionalDijkstraGetPath(bd_data);

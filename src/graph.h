@@ -9,7 +9,7 @@
 
 namespace olsp {
 struct Edge {
-    int m_target;  // corresponds to index of node in graph datastructure
+    int m_target;  // corresponds to index of node in graph data structure
     int m_cost;
     int m_child_1;  // if child edges aren't -1 that means this is a shortcut edge (see Contraction Hierarchies)
     int m_child_2;
@@ -31,7 +31,7 @@ struct ContractionData {
     std::vector<int> m_reset_visited;
     std::vector<int> m_distances;
     std::vector<int> m_reset_distances;
-    std::vector<int> m_num_contracted_neighbours;
+    std::vector<int> m_num_contracted_neighbors;
     std::vector<std::pair<int, Edge>> m_shortcuts_fwd;
     std::vector<std::pair<int, Edge>> m_shortcuts_bwd;
 
@@ -175,7 +175,7 @@ class Graph {
      *
      * @warning Don't use this function with a graph based on contraction hierarchies.
      * It will sometimes produce wrong results depending on the hierarchy.
-     * instead use contractionHierachyQuery function
+     * instead use contractionHierarchyQuery function
      *
      * @param data
      */
@@ -183,7 +183,7 @@ class Graph {
 
     /**
      * @brief Extracts path from QueryData.
-     * dijstraQuery function with m_path_needed = true needs to be called beforehand.
+     * dijkstraQuery function with m_path_needed = true needs to be called beforehand.
      *
      * @param data
      */
@@ -195,7 +195,7 @@ class Graph {
      *
      * @param data set m_path_needed = true to make path extractable
      */
-    void contractionHierachyQuery(QueryData& data);
+    void contractionHierarchyQuery(QueryData& data);
 
     /**
      * @brief Create a hub labeling when not using IS for CH.
