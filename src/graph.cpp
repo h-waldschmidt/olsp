@@ -522,22 +522,6 @@ void Graph::createHubLabelsWithoutIS(int threshold) {
 
             for (uint64_t j = m_fwd_indices[m_node_indices[e.m_target]];
                  j < m_fwd_indices[m_node_indices[e.m_target] + 1]; j++) {
-                /*
-                if (i >= 16503330) {
-
-                std::cout << "Node ID" << node << std::endl;
-                std::cout << "Target Node ID: " << e.m_target << std::endl;
-                std::cout << "Node Index: " << i << std::endl;
-                std::cout << "Target Node Index: " << m_node_indices[e.m_target] << std::endl;
-                std::cout << "Target Node fwd Index: " << m_fwd_indices[m_node_indices[e.m_target]] << std::endl;
-                std::cout << "Target Node bwd Index: " << m_bwd_indices[m_node_indices[e.m_target]] << std::endl;
-                std::cout << "Num Fwd Label: " << m_fwd_hub_labels.size() << std::endl;
-                std::cout << "Do Fwd Label Produce segfault: " << j << std::endl;
-                std::cout << "Fwd Label: " << m_fwd_hub_labels[j].first << std::endl;
-                std::cout << "End Debug Output" << std::endl;
-                }
-                */
-
                 if (m_fwd_hub_labels[j].second + e.m_cost <= threshold)
                     fwd_labels.push_back(
                         std::make_pair(m_fwd_hub_labels[j].first, m_fwd_hub_labels[j].second + e.m_cost));
@@ -669,7 +653,7 @@ void Graph::createHubLabelsWithIS(int threshold) {
         m_node_indices[m_level_indices_sorted[i]] = i;
     }
 
-    int num_calculated = 0;
+    uint64_t num_calculated = 0;
 
     for (int i = 0; i < different_levels_vec.size(); ++i) {
         if (i == 0) {
@@ -783,7 +767,7 @@ void Graph::createHubLabelsWithIS(int threshold) {
                 }
             }
         }
-        num_calculated += level_buckets[i].size();
+        num_calculated += static_cast<uint64_t>(level_buckets[i].size());
         // std::cout << "Finished Hub Labels for " << num_calculated << " num of nodes." << std::endl;
     }
 
@@ -895,7 +879,6 @@ std::vector<int> Graph::createESC(int threshold) {
 }
 
 bool Graph::verifyShortestPathCover(std::vector<int>& esc_set, int threshold) {
-    // TODO:
     std::cout << "Started verifiying path cover." << std::endl;
     auto begin = std::chrono::high_resolution_clock::now();
 
@@ -927,7 +910,6 @@ bool Graph::verifyShortestPathCover(std::vector<int>& esc_set, int threshold) {
 }
 
 std::vector<int> Graph::reduceESC(std::vector<int>& path_cover, int threshold) {
-    // TODO:
     std::cout << "Started reducing path cover." << std::endl;
     auto begin = std::chrono::high_resolution_clock::now();
 
@@ -967,7 +949,6 @@ std::vector<int> Graph::reduceESC(std::vector<int>& path_cover, int threshold) {
 }
 
 bool Graph::forwardDijkstraSearch(LowerBoundData& lb_data) {
-    // TODO:
     std::priority_queue<std::pair<int, std::pair<int, bool>>, std::vector<std::pair<int, std::pair<int, bool>>>,
                         std::greater<std::pair<int, std::pair<int, bool>>>>
         pq;
@@ -1010,7 +991,6 @@ bool Graph::forwardDijkstraSearch(LowerBoundData& lb_data) {
 }
 
 bool Graph::backwardDijkstraSearch(LowerBoundData& lb_data) {
-    // TODO:
     std::priority_queue<std::pair<int, std::pair<int, bool>>, std::vector<std::pair<int, std::pair<int, bool>>>,
                         std::greater<std::pair<int, std::pair<int, bool>>>>
         pq;
@@ -1081,9 +1061,6 @@ std::vector<int> Graph::lowerBound(std::vector<int>& esc_set, int threshold) {
     std::vector<bool> node_in_spc(m_num_nodes, false);
     for (int& node : esc_set) node_in_spc[node] = true;
 
-    // std::vector<std::vector<int>> shortest_paths_backwards;
-
-    // std::vector<int> shortest_path;
     std::vector<int> end_nodes;
 
     while (spc_nodes_covered != esc_set.size()) {
@@ -1106,13 +1083,6 @@ std::vector<int> Graph::lowerBound(std::vector<int>& esc_set, int threshold) {
             int id = lb_data.m_reset_previous_node[i];
             if (lb_data.m_distances[id] < 2 * threshold && lb_data.m_distances[id] >= threshold) {
                 end_nodes.push_back(id);
-
-                /*
-                if (lb_data.m_distances[id] !=
-                    simplifiedHubLabelQuery(m_fwd_hub_labels[lb_data.m_start_node], m_bwd_hub_labels[id])) {
-                    std::cout << "Different Distances" << std::endl;
-                }
-                */
             }
             lb_data.m_distances[id] = std::numeric_limits<int>::max();
         }
@@ -1152,51 +1122,15 @@ std::vector<int> Graph::lowerBound(std::vector<int>& esc_set, int threshold) {
                 int previous = lb_data.m_previous_node[cur_node];
                 lb_data.m_marked[previous] = true;
                 cur_node = previous;
-                // shortest_path.push_back(cur_node);
             }
-            // shortest_paths_backwards.push_back(shortest_path);
-            // shortest_path.clear();
             lower_bound.push_back(lb_data.m_start_node);
         }
 
         // reset data for next run
-        // for (int& node : lb_data.m_reset_previous_node) lb_data.m_previous_node[node] = -1;
         lb_data.m_reset_previous_node.clear();
-
-        // std::cout << "Finished: " << spc_nodes_covered << "\n";
 
         ++spc_nodes_covered;
     }
-
-    // check for duplicates in paths
-    /*
-    for (int i = 0; i < shortest_paths_backwards.size(); i++) {
-        for (int j = i + 1; j < shortest_paths_backwards.size(); j++) {
-            auto inters = intersection(shortest_paths_backwards[i], shortest_paths_backwards[j]);
-            if (inters.size() != 0) {
-                std::cout << "Intersection not empty: "
-                          << "i: " << i << " j: " << j << " size: " << inters.size() << "\n";
-                std::cout << "Start Node: " << shortest_paths_backwards[i][shortest_paths_backwards[i].size() - 1]
-                          << " End Node: " << shortest_paths_backwards[i][0] << "\n";
-                for (int k = 0; k < inters.size(); ++k) {
-                    std::cout << "Inside Intersection " << k << " : " << inters[k] << "\n";
-                }
-            }
-        }
-    }
-    */
-
-    /*
-    std::cout << "Hier noch die Pfade: "
-              << "\n";
-    // print paths
-    for (int i = 0; i < shortest_paths_backwards.size(); i++) {
-        for (int j = 0; j < shortest_paths_backwards[i].size(); j++) {
-            std::cout << shortest_paths_backwards[i][j] << " ";
-        }
-        std::cout << "\n";
-    }
-    */
 
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(end - begin);
@@ -1210,8 +1144,6 @@ void Graph::createReverseGraphNormal() {
         for (Edge e : m_graph[i]) {
             int new_source = e.m_target;
             e.m_target = i;
-
-            // TODO: I'm not sure about this (should shortcut order be changed)
             int child_1_copy = e.m_child_1;
             e.m_child_1 = e.m_child_2;
             e.m_child_2 = child_1_copy;
@@ -1228,7 +1160,6 @@ void Graph::createReverseGraphCH() {
                 Edge edge = *iter;
                 int new_source = edge.m_target;
                 edge.m_target = i;
-                // TODO: I'm not sure about this (should shortcut order be changed)
                 int child_1_copy = edge.m_child_1;
                 edge.m_child_1 = edge.m_child_2;
                 edge.m_child_2 = child_1_copy;
@@ -1284,9 +1215,6 @@ void Graph::createCHwithoutIS(Heuristic heuristic) {
     m_contr_data[0] = ContractionData(m_num_nodes);
     m_contr_data[0].m_num_contracted_neighbours.clear();
     m_contr_data[0].m_num_contracted_neighbours.resize(m_num_nodes, 0);
-
-    // std::vector<int> longest_path_fwd(m_num_nodes, 0);
-    // std::vector<int> longest_path_bwd(m_num_nodes, 0);
 
     // initialize importance for all nodes
     std::priority_queue<std::pair<int, int>, std::vector<std::pair<int, int>>, std::greater<std::pair<int, int>>>
@@ -1408,9 +1336,6 @@ void Graph::createCHwithIS(Heuristic heuristic) {
         m_contr_data[i].m_num_contracted_neighbours.resize(m_num_nodes);
     }
 
-    // std::vector<int> longest_path_fwd(m_num_nodes, 0);
-    // std::vector<int> longest_path_bwd(m_num_nodes, 0);
-
     // initialize importance for all nodes
     std::priority_queue<std::pair<int, int>, std::vector<std::pair<int, int>>, std::greater<std::pair<int, int>>>
         importance_pq;
@@ -1441,6 +1366,8 @@ void Graph::createCHwithIS(Heuristic heuristic) {
         std::vector<int> independent_set;
         std::priority_queue<std::pair<int, int>, std::vector<std::pair<int, int>>, std::greater<std::pair<int, int>>>
             new_pq;
+
+        // TODO: this can probably be done more efficiently
         while (!importance_pq.empty()) {
             auto contracted_node = importance_pq.top();
             importance_pq.pop();
@@ -1470,7 +1397,6 @@ void Graph::createCHwithIS(Heuristic heuristic) {
                 }
 
                 while (new_importance > importance_pq.top().first) {
-                    // std::cout << importance_pq.size() << std::endl;
                     if (marked[contracted_node.second])
                         new_pq.emplace(std::make_pair(new_importance, contracted_node.second));
                     else
@@ -1874,7 +1800,6 @@ void Graph::lowerBoundDijkstra(LowerBoundData& lb_data) {
         if (cur_node.first > lb_data.m_threshold * 2) break;
 
         for (Edge& e : m_graph[cur_node.second]) {
-            // if (lb_data.m_marked[e.m_target]) continue;  // TODO: passt das?
             if (lb_data.m_distances[e.m_target] > lb_data.m_distances[cur_node.second] + e.m_cost) {
                 if (lb_data.m_distances[e.m_target] == std::numeric_limits<int>::max())
                     lb_data.m_reset_previous_node.push_back(e.m_target);
@@ -1887,7 +1812,6 @@ void Graph::lowerBoundDijkstra(LowerBoundData& lb_data) {
 }
 
 bool Graph::pathCoverVerificationDijkstra(LowerBoundData& lb_data) {
-    // TODO:
     std::priority_queue<std::pair<int, std::pair<int, bool>>, std::vector<std::pair<int, std::pair<int, bool>>>,
                         std::greater<std::pair<int, std::pair<int, bool>>>>
         pq;
