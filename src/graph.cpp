@@ -17,20 +17,30 @@ namespace olsp {
 
 Graph::Graph(const std::string& path, ReadMode read_mode, bool ch_available, bool prune_graph, Heuristic ch_heuristic,
              DistanceMode dist_mode)
-    : m_ch_available(ch_available) {
+    : m_ch_available(ch_available), m_is(false), m_num_threads(1) {
     readGraph(path, read_mode, dist_mode);
     m_num_nodes = m_graph.size();
 
     if (read_mode == ReadMode::NORMAL && m_ch_available) {
-        createCH(ch_heuristic);  // TODO:
+        createCHwithoutIS(ch_heuristic);
     }
 
     createReverseGraph(prune_graph);
 }
 
-Graph::Graph(std::vector<std::vector<Edge>> graph) : m_graph(graph) {
-    createReverseGraph(false);
+Graph::Graph(const std::string& path, ReadMode read_mode, bool ch_available, bool prune_graph, int num_threads,
+             Heuristic ch_heuristic, DistanceMode dist_mode)
+    : m_ch_available(ch_available), m_num_threads(num_threads), m_is(true) {
+    readGraph(path, read_mode, dist_mode);
     m_num_nodes = m_graph.size();
+
+    omp_set_num_threads(m_num_threads);
+
+    if (read_mode == ReadMode::NORMAL && m_ch_available) {
+        createCHwithIS(ch_heuristic);
+    }
+
+    createReverseGraph(prune_graph);
 }
 
 void Graph::readGraph(const std::string& path, ReadMode read_mode, DistanceMode dist_mode) {
@@ -452,7 +462,7 @@ void Graph::contractionHierachyQuery(QueryData& data) {
     // std::cout << "Finished CH Query. Took " << elapsed.count() << " microseconds " << std::endl;
 }
 
-void Graph::createHubLabels(int threshold) {
+void Graph::createHubLabelsWithoutIS(int threshold) {
     std::cout << "Started creating hub labels." << std::endl;
     auto begin = std::chrono::high_resolution_clock::now();
 
@@ -604,6 +614,177 @@ void Graph::createHubLabels(int threshold) {
         for (auto label : bwd_labels) {
             m_bwd_hub_labels.push_back(label);
         }
+    }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin);
+    std::cout << "Finished creating hub labels. Took " << elapsed.count() << " milliseconds " << std::endl;
+}
+
+void Graph::createHubLabelsWithIS(int threshold) {
+    std::cout << "Started creating hub labels." << std::endl;
+    auto begin = std::chrono::high_resolution_clock::now();
+
+    if (m_graph.empty() || m_reverse_graph.empty()) {
+        std::cout << "Can't create hub labels, because graph or reverse grpah is empty" << std::endl;
+        return;
+    }
+
+    m_fwd_indices.clear();
+    m_fwd_indices.resize(m_num_nodes + 1, 0);
+    m_bwd_indices.clear();
+    m_bwd_indices.resize(m_num_nodes + 1, 0);
+
+    m_fwd_hub_labels.clear();
+    m_bwd_hub_labels.clear();
+
+    // sort the levels, but don't change the original vector
+    std::unordered_set<int> different_levels;
+    for (int i = 0; i < m_num_nodes; i++) {
+        different_levels.emplace(m_node_level[i]);
+    }
+    std::vector<int> different_levels_vec;
+    different_levels_vec.insert(different_levels_vec.end(), different_levels.begin(), different_levels.end());
+    std::sort(different_levels_vec.begin(), different_levels_vec.end(),
+              [](int& left, int& right) { return left > right; });
+    std::vector<std::vector<int>> level_buckets(different_levels_vec.size());
+    for (int i = 0; i < m_num_nodes; ++i) {
+        auto iter = find(different_levels_vec.begin(), different_levels_vec.end(), m_node_level[i]);
+        level_buckets[iter - different_levels_vec.begin()].push_back(i);
+    }
+
+    // sort the levels, but don't change the original vector
+    m_level_indices_sorted.clear();
+
+    for (int i = 0; i < different_levels_vec.size(); ++i) {
+        for (int j = 0; j < level_buckets[i].size(); ++j) {
+            m_level_indices_sorted.push_back(level_buckets[i][j]);
+        }
+    }
+
+    m_node_indices.clear();
+    m_node_indices.resize(m_num_nodes);
+    // save for each node its correspnding index
+    for (int i = 0; i < m_num_nodes; ++i) {
+        m_node_indices[m_level_indices_sorted[i]] = i;
+    }
+
+    int num_calculated = 0;
+
+    for (int i = 0; i < different_levels_vec.size(); ++i) {
+        if (i == 0) {
+            int node = level_buckets[i][0];
+            m_fwd_hub_labels.push_back(std::make_pair(node, 0));
+            m_bwd_hub_labels.push_back(std::make_pair(node, 0));
+            m_fwd_indices[1] = 1;
+            m_bwd_indices[1] = 1;
+            continue;
+        }
+
+#pragma omp parallel for ordered schedule(static, 1)
+        for (int j = 0; j < level_buckets[i].size(); ++j) {
+            int node = level_buckets[i][j];
+
+            std::vector<std::pair<int, int>> fwd_labels;
+            std::vector<std::pair<int, int>> bwd_labels;
+
+            fwd_labels.push_back(std::make_pair(node, 0));
+            bwd_labels.push_back(std::make_pair(node, 0));
+
+            // fwd lables
+            for (Edge& e : m_graph[node]) {
+                if (m_node_level[node] >= m_node_level[e.m_target]) continue;
+
+                for (uint64_t j = m_fwd_indices[m_node_indices[e.m_target]];
+                     j < m_fwd_indices[m_node_indices[e.m_target] + 1]; j++) {
+                    if (m_fwd_hub_labels[j].second + e.m_cost <= threshold)
+                        fwd_labels.push_back(
+                            std::make_pair(m_fwd_hub_labels[j].first, m_fwd_hub_labels[j].second + e.m_cost));
+                }
+            }
+
+            // remove duplicates
+            std::sort(fwd_labels.begin(), fwd_labels.end(),
+                      [](auto& left, auto& right) { return left.first < right.first; });
+            for (auto iter = fwd_labels.begin(); iter != fwd_labels.end();) {
+                auto iter_2 = fwd_labels.end() - 1;
+                if (std::distance(iter, iter_2) != 0 && iter->first == (iter + 1)->first) {
+                    if (iter->second >= (iter + 1)->second) {
+                        iter = fwd_labels.erase(iter);
+                    } else {
+                        iter = fwd_labels.erase(iter + 1);
+                        --iter;
+                    }
+                } else {
+                    ++iter;
+                }
+            }
+
+            for (auto iter = fwd_labels.begin(); iter != fwd_labels.end();) {
+                int best_dist = std::numeric_limits<int>::max();
+                if (iter->first != node) best_dist = simplifiedHubLabelQuery(fwd_labels, iter->first);
+                if (best_dist < iter->second)
+                    iter = fwd_labels.erase(iter);
+                else
+                    ++iter;
+            }
+
+            // bwd lables
+            for (Edge& e : m_reverse_graph[node]) {
+                if (m_node_level[node] >= m_node_level[e.m_target]) continue;
+
+                for (uint64_t j = m_bwd_indices[m_node_indices[e.m_target]];
+                     j < m_bwd_indices[m_node_indices[e.m_target] + 1]; j++) {
+                    if (m_bwd_hub_labels[j].second + e.m_cost <= threshold)
+                        bwd_labels.push_back(
+                            std::make_pair(m_bwd_hub_labels[j].first, m_bwd_hub_labels[j].second + e.m_cost));
+                }
+            }
+
+            // remove duplicates
+            std::sort(bwd_labels.begin(), bwd_labels.end(),
+                      [](auto& left, auto& right) { return left.first < right.first; });
+            for (auto iter = bwd_labels.begin(); iter != bwd_labels.end();) {
+                auto iter_2 = bwd_labels.end() - 1;
+                if (std::distance(iter, iter_2) != 0 && iter->first == (iter + 1)->first) {
+                    if (iter->second >= (iter + 1)->second) {
+                        iter = bwd_labels.erase(iter);
+                    } else {
+                        iter = bwd_labels.erase(iter + 1);
+                        --iter;
+                    }
+                } else {
+                    ++iter;
+                }
+            }
+
+            for (auto iter = bwd_labels.begin(); iter != bwd_labels.end();) {
+                int best_dist = std::numeric_limits<int>::max();
+                if (iter->first != node) best_dist = simplifiedHubLabelQuery(iter->first, bwd_labels);
+                if (best_dist < iter->second)
+                    iter = bwd_labels.erase(iter);
+                else
+                    ++iter;
+            }
+
+#pragma omp ordered
+            {
+                int fwd_node_index = m_node_indices[node];
+                m_fwd_indices[fwd_node_index + 1] =
+                    m_fwd_indices[fwd_node_index] + static_cast<uint64_t>(fwd_labels.size());
+                m_bwd_indices[fwd_node_index + 1] =
+                    m_bwd_indices[fwd_node_index] + static_cast<uint64_t>(bwd_labels.size());
+
+                for (auto label : fwd_labels) {
+                    m_fwd_hub_labels.push_back(label);
+                }
+                for (auto label : bwd_labels) {
+                    m_bwd_hub_labels.push_back(label);
+                }
+            }
+        }
+        num_calculated += level_buckets[i].size();
+        // std::cout << "Finished Hub Labels for " << num_calculated << " num of nodes." << std::endl;
     }
 
     auto end = std::chrono::high_resolution_clock::now();
@@ -1078,7 +1259,7 @@ int Graph::greatCircleDistance(double lat_1, double lon_1, double lat_2, double 
     return 6371000 * c;  // return in meters
 }
 
-void Graph::createCH(Heuristic heuristic) {
+void Graph::createCHwithoutIS(Heuristic heuristic) {
     std::cout << "Started creating CH." << std::endl;
 
     auto begin = std::chrono::high_resolution_clock::now();
@@ -1098,9 +1279,11 @@ void Graph::createCH(Heuristic heuristic) {
     std::vector<bool> contracted(m_num_nodes, false);
     int num_contracted = 0;
 
-    m_contr_data = ContractionData(m_num_nodes);
-    m_contr_data.m_num_contracted_neighbours.clear();
-    m_contr_data.m_num_contracted_neighbours.resize(m_num_nodes, 0);
+    m_contr_data.resize(1);
+
+    m_contr_data[0] = ContractionData(m_num_nodes);
+    m_contr_data[0].m_num_contracted_neighbours.clear();
+    m_contr_data[0].m_num_contracted_neighbours.resize(m_num_nodes, 0);
 
     // std::vector<int> longest_path_fwd(m_num_nodes, 0);
     // std::vector<int> longest_path_bwd(m_num_nodes, 0);
@@ -1174,7 +1357,16 @@ void Graph::createCH(Heuristic heuristic) {
             }
         }
 
-        contractNode(contracted, contracted_node.second);
+        contractNode(contracted, contracted_node.second, 0);
+
+        for (auto& fwd_shortcut : m_contr_data[0].m_shortcuts_fwd)
+            m_graph[fwd_shortcut.first].push_back(fwd_shortcut.second);
+        for (auto& bwd_shortcut : m_contr_data[0].m_shortcuts_bwd)
+            m_reverse_graph[bwd_shortcut.first].push_back(bwd_shortcut.second);
+
+        m_contr_data[0].m_shortcuts_fwd.clear();
+        m_contr_data[0].m_shortcuts_bwd.clear();
+
         contracted[contracted_node.second] = true;
         m_node_level[contracted_node.second] = num_contracted;
         ++num_contracted;
@@ -1182,10 +1374,177 @@ void Graph::createCH(Heuristic heuristic) {
         // std::cout << "Finished contracting: " << num_contracted << "\n";
     }
 
-    m_contr_data.m_distances.clear();
-    m_contr_data.m_num_contracted_neighbours.clear();
-    m_contr_data.m_outgoing.clear();
-    m_contr_data.m_visited.clear();
+    m_contr_data.clear();
+
+    auto end = std::chrono::high_resolution_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(end - begin);
+    std::cout << "Finished creating CH. Took " << elapsed.count() << " seconds" << std::endl;
+}
+
+void Graph::createCHwithIS(Heuristic heuristic) {
+    std::cout << "Started creating CH." << std::endl;
+
+    auto begin = std::chrono::high_resolution_clock::now();
+
+    if (m_graph.empty()) {
+        std::cout << "Can't create CH, because graph is empty." << std::endl;
+        return;
+    }
+    m_node_level.clear();
+    m_node_level.resize(m_num_nodes);
+
+    // reverse graph needed to find incoming edges
+    m_ch_available = false;
+    createReverseGraph(false);
+    m_ch_available = true;
+
+    std::vector<bool> contracted(m_num_nodes, false);
+    int num_contracted = 0;
+    int cur_level = 0;
+
+    m_contr_data.resize(m_num_threads);
+    for (int i = 0; i < m_num_threads; ++i) {
+        m_contr_data[i] = ContractionData(m_num_nodes);
+        m_contr_data[i].m_num_contracted_neighbours.resize(m_num_nodes);
+    }
+
+    // std::vector<int> longest_path_fwd(m_num_nodes, 0);
+    // std::vector<int> longest_path_bwd(m_num_nodes, 0);
+
+    // initialize importance for all nodes
+    std::priority_queue<std::pair<int, int>, std::vector<std::pair<int, int>>, std::greater<std::pair<int, int>>>
+        importance_pq;
+    for (int i = 0; i < m_num_nodes; ++i) {
+        int importance = 0;
+        switch (heuristic) {
+            case Heuristic::IN_OUT:
+                importance = inOutProductHeuristic(contracted, i);
+                break;
+            case Heuristic::EDGE_DIFFERENCE:
+                importance = edgeDifferenceHeuristic(contracted, i);
+                break;
+            case Heuristic::WEIGHTED_COST:
+                importance = weightedCostHeuristic(contracted, i);
+                break;
+            case Heuristic::MICROSOFT:
+                importance = microsoftHeuristic(contracted, i, 0);
+                break;
+            default:
+                break;
+        }
+        importance_pq.emplace(std::make_pair(importance, i));
+    }
+
+    while (num_contracted != m_num_nodes) {
+        // create independet set
+        std::vector<bool> marked(m_num_nodes, false);
+        std::vector<int> independent_set;
+        std::priority_queue<std::pair<int, int>, std::vector<std::pair<int, int>>, std::greater<std::pair<int, int>>>
+            new_pq;
+        while (!importance_pq.empty()) {
+            auto contracted_node = importance_pq.top();
+            importance_pq.pop();
+
+            if (marked[contracted_node.second]) {
+                new_pq.emplace(contracted_node);
+                continue;
+            }
+
+            if (cur_level != 0) {
+                int new_importance = 0;
+                switch (heuristic) {
+                    case Heuristic::IN_OUT:
+                        new_importance = inOutProductHeuristic(contracted, contracted_node.second);
+                        break;
+                    case Heuristic::EDGE_DIFFERENCE:
+                        new_importance = edgeDifferenceHeuristic(contracted, contracted_node.second);
+                        break;
+                    case Heuristic::WEIGHTED_COST:
+                        new_importance = weightedCostHeuristic(contracted, contracted_node.second);
+                        break;
+                    case Heuristic::MICROSOFT:
+                        new_importance = microsoftHeuristic(contracted, contracted_node.second, cur_level);
+                        break;
+                    default:
+                        break;
+                }
+
+                while (new_importance > importance_pq.top().first) {
+                    // std::cout << importance_pq.size() << std::endl;
+                    if (marked[contracted_node.second])
+                        new_pq.emplace(std::make_pair(new_importance, contracted_node.second));
+                    else
+                        importance_pq.emplace(std::make_pair(new_importance, contracted_node.second));
+                    contracted_node = importance_pq.top();
+                    importance_pq.pop();
+
+                    switch (heuristic) {
+                        case Heuristic::IN_OUT:
+                            new_importance = inOutProductHeuristic(contracted, contracted_node.second);
+                            break;
+                        case Heuristic::EDGE_DIFFERENCE:
+                            new_importance = edgeDifferenceHeuristic(contracted, contracted_node.second);
+                            break;
+                        case Heuristic::WEIGHTED_COST:
+                            new_importance = weightedCostHeuristic(contracted, contracted_node.second);
+                            break;
+                        case Heuristic::MICROSOFT:
+                            new_importance = microsoftHeuristic(contracted, contracted_node.second, cur_level);
+                            break;
+                        default:
+                            break;
+                    }
+                }
+            }
+
+            if (marked[contracted_node.second])
+                new_pq.emplace(contracted_node);
+            else {
+                marked[contracted_node.second] = true;
+                independent_set.push_back(contracted_node.second);
+                for (Edge& e : m_graph[contracted_node.second]) marked[e.m_target] = true;
+                for (Edge& e : m_reverse_graph[contracted_node.second]) marked[e.m_target] = true;
+            }
+        }
+        importance_pq = new_pq;
+
+// contract nodes from independent set in parallel
+#pragma omp parallel for
+        for (int i = 0; i < independent_set.size(); ++i) {
+            contractNode(contracted, independent_set[i], omp_get_thread_num());
+            contracted[independent_set[i]] = true;
+            m_node_level[independent_set[i]] = cur_level;
+        }
+
+        for (int i = 0; i < m_num_threads; ++i) {
+            for (auto& fwd_shortcut : m_contr_data[i].m_shortcuts_fwd)
+                m_graph[fwd_shortcut.first].push_back(fwd_shortcut.second);
+            for (auto& bwd_shortcut : m_contr_data[i].m_shortcuts_bwd)
+                m_reverse_graph[bwd_shortcut.first].push_back(bwd_shortcut.second);
+
+            m_contr_data[i].m_shortcuts_fwd.clear();
+            m_contr_data[i].m_shortcuts_bwd.clear();
+
+            if (i == 0) continue;
+
+            for (int j = 0; j < m_num_nodes; ++j) {
+                m_contr_data[0].m_num_contracted_neighbours[j] += m_contr_data[i].m_num_contracted_neighbours[j];
+                m_contr_data[i].m_num_contracted_neighbours[j] = 0;
+            }
+        }
+
+        num_contracted += static_cast<int>(independent_set.size());
+
+        if (num_contracted >= m_num_nodes * 0.8) {
+            omp_set_num_threads(1);
+        }
+
+        ++cur_level;
+        // std::cout << "Finished contracting: " << num_contracted << "\n";
+    }
+
+    m_contr_data.clear();
+    omp_set_num_threads(m_num_threads);
 
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(end - begin);
@@ -1227,38 +1586,39 @@ int Graph::edgeDifferenceHeuristic(std::vector<bool>& contracted, int node) {
         if (outgoing.m_cost > max_distance_out) max_distance_out = outgoing.m_cost;
 
         ++num_outgoing;
-        m_contr_data.m_reset_outgoing.push_back(outgoing.m_target);
-        m_contr_data.m_outgoing[outgoing.m_target] = true;
+        m_contr_data[0].m_reset_outgoing.push_back(outgoing.m_target);
+        m_contr_data[0].m_outgoing[outgoing.m_target] = true;
     }
 
     for (auto& incoming : m_reverse_graph[node]) {
         if (contracted[incoming.m_target]) continue;
         int max_distance = incoming.m_cost + max_distance_out;
 
-        contractionDijkstra(incoming.m_target, node, contracted, num_outgoing, max_distance);
+        contractionDijkstra(incoming.m_target, node, contracted, num_outgoing, max_distance, 0);
 
         for (auto& outgoing : m_graph[node]) {
-            if (m_contr_data.m_visited[outgoing.m_target]) continue;
+            if (m_contr_data[0].m_visited[outgoing.m_target]) continue;
             if (contracted[outgoing.m_target]) continue;
-            if (m_contr_data.m_distances[outgoing.m_target] != incoming.m_cost + outgoing.m_cost) continue;
+            if (m_contr_data[0].m_distances[outgoing.m_target] != incoming.m_cost + outgoing.m_cost) continue;
             if (outgoing.m_target == incoming.m_target) continue;
 
-            m_contr_data.m_visited[outgoing.m_target] = true;
-            m_contr_data.m_reset_visited.push_back(outgoing.m_target);
+            m_contr_data[0].m_visited[outgoing.m_target] = true;
+            m_contr_data[0].m_reset_visited.push_back(outgoing.m_target);
 
             ++num_added_shortcuts;
         }
 
         // reset contraction data
-        for (int& num : m_contr_data.m_reset_visited) m_contr_data.m_visited[num] = false;
-        for (int& num : m_contr_data.m_reset_distances) m_contr_data.m_distances[num] = std::numeric_limits<int>::max();
-        m_contr_data.m_reset_visited.clear();
-        m_contr_data.m_reset_distances.clear();
+        for (int& num : m_contr_data[0].m_reset_visited) m_contr_data[0].m_visited[num] = false;
+        for (int& num : m_contr_data[0].m_reset_distances)
+            m_contr_data[0].m_distances[num] = std::numeric_limits<int>::max();
+        m_contr_data[0].m_reset_visited.clear();
+        m_contr_data[0].m_reset_distances.clear();
     }
 
     // reset contraction data
-    for (int& num : m_contr_data.m_reset_outgoing) m_contr_data.m_outgoing[num] = false;
-    m_contr_data.m_reset_outgoing.clear();
+    for (int& num : m_contr_data[0].m_reset_outgoing) m_contr_data[0].m_outgoing[num] = false;
+    m_contr_data[0].m_reset_outgoing.clear();
 
     return num_added_shortcuts - num_edges_deleted;
 }
@@ -1280,29 +1640,30 @@ int Graph::weightedCostHeuristic(std::vector<bool>& contracted, int node) {
 
     // mark outgoing nodes
     // will be used for pruning in contractionDijkstra
+
     int max_distance_out = -1;
     for (auto& outgoing : m_graph[node]) {
         if (contracted[outgoing.m_target]) continue;
         if (outgoing.m_cost > max_distance_out) max_distance_out = outgoing.m_cost;
 
-        m_contr_data.m_reset_outgoing.push_back(outgoing.m_target);
-        m_contr_data.m_outgoing[outgoing.m_target] = true;
+        m_contr_data.at(0).m_reset_outgoing.push_back(outgoing.m_target);
+        m_contr_data[0].m_outgoing[outgoing.m_target] = true;
     }
 
     for (auto& incoming : m_reverse_graph[node]) {
         if (contracted[incoming.m_target]) continue;
         int max_distance = incoming.m_cost + max_distance_out;
 
-        contractionDijkstra(incoming.m_target, node, contracted, num_outgoing, max_distance);
+        contractionDijkstra(incoming.m_target, node, contracted, num_outgoing, max_distance, 0);
 
         for (auto& outgoing : m_graph[node]) {
-            if (m_contr_data.m_visited[outgoing.m_target]) continue;
+            if (m_contr_data[0].m_visited[outgoing.m_target]) continue;
             if (contracted[outgoing.m_target]) continue;
-            if (m_contr_data.m_distances[outgoing.m_target] != incoming.m_cost + outgoing.m_cost) continue;
+            if (m_contr_data[0].m_distances[outgoing.m_target] != incoming.m_cost + outgoing.m_cost) continue;
             if (outgoing.m_target == incoming.m_target) continue;
 
-            m_contr_data.m_visited[outgoing.m_target] = true;
-            m_contr_data.m_reset_visited.push_back(outgoing.m_target);
+            m_contr_data[0].m_visited[outgoing.m_target] = true;
+            m_contr_data[0].m_reset_visited.push_back(outgoing.m_target);
 
             ++num_added_shortcuts;
 
@@ -1310,15 +1671,16 @@ int Graph::weightedCostHeuristic(std::vector<bool>& contracted, int node) {
         }
 
         // reset contraction data
-        for (int& num : m_contr_data.m_reset_visited) m_contr_data.m_visited[num] = false;
-        for (int& num : m_contr_data.m_reset_distances) m_contr_data.m_distances[num] = std::numeric_limits<int>::max();
-        m_contr_data.m_reset_visited.clear();
-        m_contr_data.m_reset_distances.clear();
+        for (int& num : m_contr_data[0].m_reset_visited) m_contr_data[0].m_visited[num] = false;
+        for (int& num : m_contr_data[0].m_reset_distances)
+            m_contr_data[0].m_distances[num] = std::numeric_limits<int>::max();
+        m_contr_data[0].m_reset_visited.clear();
+        m_contr_data[0].m_reset_distances.clear();
     }
 
     // reset contraction data
-    for (int& num : m_contr_data.m_reset_outgoing) m_contr_data.m_outgoing[num] = false;
-    m_contr_data.m_reset_outgoing.clear();
+    for (int& num : m_contr_data[0].m_reset_outgoing) m_contr_data[0].m_outgoing[num] = false;
+    m_contr_data[0].m_reset_outgoing.clear();
 
     return 0.8 * max_cost + 0.2 * num_outgoing * num_incomming;
     // return max_cost;
@@ -1348,21 +1710,21 @@ int Graph::altWeightedCostHeuristic(std::vector<bool>& contracted, int node, std
         if (contracted[outgoing.m_target]) continue;
         if (outgoing.m_cost > max_distance_out) max_distance_out = outgoing.m_cost;
 
-        m_contr_data.m_reset_outgoing.push_back(outgoing.m_target);
-        m_contr_data.m_outgoing[outgoing.m_target] = true;
+        m_contr_data[0].m_reset_outgoing.push_back(outgoing.m_target);
+        m_contr_data[0].m_outgoing[outgoing.m_target] = true;
     }
 
     for (auto& incoming : m_reverse_graph[node]) {
         if (contracted[incoming.m_target]) continue;
         int max_distance = incoming.m_cost + max_distance_out;
 
-        contractionDijkstra(incoming.m_target, node, contracted, num_outgoing, max_distance);
+        contractionDijkstra(incoming.m_target, node, contracted, num_outgoing, max_distance, 0);
 
         for (auto& outgoing : m_graph[node]) {
             if (contracted[outgoing.m_target]) continue;
             if (outgoing.m_target == incoming.m_target) continue;
-            if (m_contr_data.m_visited[outgoing.m_target]) continue;
-            if (m_contr_data.m_distances[outgoing.m_target] != incoming.m_cost + outgoing.m_cost) continue;
+            if (m_contr_data[0].m_visited[outgoing.m_target]) continue;
+            if (m_contr_data[0].m_distances[outgoing.m_target] != incoming.m_cost + outgoing.m_cost) continue;
 
             // TODO: Das auch noch für incoming machen in einer extra liste
             // update longest_path
@@ -1371,8 +1733,8 @@ int Graph::altWeightedCostHeuristic(std::vector<bool>& contracted, int node, std
             if (longest_path_bwd[outgoing.m_target] < longest_path_bwd[node] + incoming.m_cost)
                 longest_path_bwd[outgoing.m_target] = longest_path_bwd[node] + incoming.m_cost;
 
-            m_contr_data.m_visited[outgoing.m_target] = true;
-            m_contr_data.m_reset_visited.push_back(outgoing.m_target);
+            m_contr_data[0].m_visited[outgoing.m_target] = true;
+            m_contr_data[0].m_reset_visited.push_back(outgoing.m_target);
 
             if (longest_path_fwd[outgoing.m_target] > max_path) max_path = longest_path_fwd[node];
             if (longest_path_bwd[outgoing.m_target] > max_path) max_path = longest_path_bwd[node];
@@ -1380,15 +1742,16 @@ int Graph::altWeightedCostHeuristic(std::vector<bool>& contracted, int node, std
         }
 
         // reset contraction data
-        for (int& num : m_contr_data.m_reset_visited) m_contr_data.m_visited[num] = false;
-        for (int& num : m_contr_data.m_reset_distances) m_contr_data.m_distances[num] = std::numeric_limits<int>::max();
-        m_contr_data.m_reset_visited.clear();
-        m_contr_data.m_reset_distances.clear();
+        for (int& num : m_contr_data[0].m_reset_visited) m_contr_data[0].m_visited[num] = false;
+        for (int& num : m_contr_data[0].m_reset_distances)
+            m_contr_data[0].m_distances[num] = std::numeric_limits<int>::max();
+        m_contr_data[0].m_reset_visited.clear();
+        m_contr_data[0].m_reset_distances.clear();
     }
 
     // reset contraction data
-    for (int& num : m_contr_data.m_reset_outgoing) m_contr_data.m_outgoing[num] = false;
-    m_contr_data.m_reset_outgoing.clear();
+    for (int& num : m_contr_data[0].m_reset_outgoing) m_contr_data[0].m_outgoing[num] = false;
+    m_contr_data[0].m_reset_outgoing.clear();
 
     return 0.799 * max_cost + 0.2 * num_outgoing * num_incomming + 0.001 * max_path;
 }
@@ -1415,37 +1778,38 @@ int Graph::deletedNeighboursHeuristic(std::vector<bool>& contracted, int node,
         if (contracted[outgoing.m_target]) continue;
         if (outgoing.m_cost > max_distance_out) max_distance_out = outgoing.m_cost;
 
-        m_contr_data.m_reset_outgoing.push_back(outgoing.m_target);
-        m_contr_data.m_outgoing[outgoing.m_target] = true;
+        m_contr_data[0].m_reset_outgoing.push_back(outgoing.m_target);
+        m_contr_data[0].m_outgoing[outgoing.m_target] = true;
     }
 
     for (auto& incoming : m_reverse_graph[node]) {
         if (contracted[incoming.m_target]) continue;
         int max_distance = incoming.m_cost + max_distance_out;
-        contractionDijkstra(incoming.m_target, node, contracted, num_outgoing, max_distance);
+        contractionDijkstra(incoming.m_target, node, contracted, num_outgoing, max_distance, 0);
 
         for (auto& outgoing : m_graph[node]) {
-            if (m_contr_data.m_visited[outgoing.m_target]) continue;
+            if (m_contr_data[0].m_visited[outgoing.m_target]) continue;
             if (contracted[outgoing.m_target]) continue;
-            if (m_contr_data.m_distances[outgoing.m_target] != incoming.m_cost + outgoing.m_cost) continue;
+            if (m_contr_data[0].m_distances[outgoing.m_target] != incoming.m_cost + outgoing.m_cost) continue;
             if (outgoing.m_target == incoming.m_target) continue;
 
-            m_contr_data.m_visited[outgoing.m_target] = true;
-            m_contr_data.m_reset_visited.push_back(outgoing.m_target);
+            m_contr_data[0].m_visited[outgoing.m_target] = true;
+            m_contr_data[0].m_reset_visited.push_back(outgoing.m_target);
 
             if (incoming.m_cost + outgoing.m_cost > max_cost) max_cost = incoming.m_cost + outgoing.m_cost;
         }
 
         // reset contraction data
-        for (int& num : m_contr_data.m_reset_visited) m_contr_data.m_visited[num] = false;
-        for (int& num : m_contr_data.m_reset_distances) m_contr_data.m_distances[num] = std::numeric_limits<int>::max();
-        m_contr_data.m_reset_visited.clear();
-        m_contr_data.m_reset_distances.clear();
+        for (int& num : m_contr_data[0].m_reset_visited) m_contr_data[0].m_visited[num] = false;
+        for (int& num : m_contr_data[0].m_reset_distances)
+            m_contr_data[0].m_distances[num] = std::numeric_limits<int>::max();
+        m_contr_data[0].m_reset_visited.clear();
+        m_contr_data[0].m_reset_distances.clear();
     }
 
     // reset contraction data
-    for (int& num : m_contr_data.m_reset_outgoing) m_contr_data.m_outgoing[num] = false;
-    m_contr_data.m_reset_outgoing.clear();
+    for (int& num : m_contr_data[0].m_reset_outgoing) m_contr_data[0].m_outgoing[num] = false;
+    m_contr_data[0].m_reset_outgoing.clear();
 
     return 0.8 * max_cost + 0.2 * num_outgoing * num_incomming + 0.0 * num_deleted_neighbours[node];
 }
@@ -1474,8 +1838,8 @@ int Graph::microsoftHeuristic(std::vector<bool>& contracted, int node, int cur_l
         if (contracted[outgoing.m_target]) continue;
         if (outgoing.m_cost > max_distance_out) max_distance_out = outgoing.m_cost;
 
-        m_contr_data.m_reset_outgoing.push_back(outgoing.m_target);
-        m_contr_data.m_outgoing[outgoing.m_target] = true;
+        m_contr_data[0].m_reset_outgoing.push_back(outgoing.m_target);
+        m_contr_data[0].m_outgoing[outgoing.m_target] = true;
     }
 
     int underlying_shortcuts = 0;
@@ -1487,20 +1851,20 @@ int Graph::microsoftHeuristic(std::vector<bool>& contracted, int node, int cur_l
             continue;
         }
         int max_distance = incoming.m_cost + max_distance_out;
-        contractionDijkstra(incoming.m_target, node, contracted, num_outgoing, max_distance);
+        contractionDijkstra(incoming.m_target, node, contracted, num_outgoing, max_distance, 0);
 
         for (auto& outgoing : m_graph[node]) {
-            if (m_contr_data.m_visited[outgoing.m_target]) continue;
+            if (m_contr_data[0].m_visited[outgoing.m_target]) continue;
             if (contracted[outgoing.m_target]) {
                 if (m_node_level[incoming.m_target] > max_neighbour_level)
                     max_neighbour_level = m_node_level[incoming.m_target];
                 continue;
             }
-            if (m_contr_data.m_distances[outgoing.m_target] != incoming.m_cost + outgoing.m_cost) continue;
+            if (m_contr_data[0].m_distances[outgoing.m_target] != incoming.m_cost + outgoing.m_cost) continue;
             if (outgoing.m_target == incoming.m_target) continue;
 
-            m_contr_data.m_visited[outgoing.m_target] = true;
-            m_contr_data.m_reset_visited.push_back(outgoing.m_target);
+            m_contr_data[0].m_visited[outgoing.m_target] = true;
+            m_contr_data[0].m_reset_visited.push_back(outgoing.m_target);
 
             if (incoming.m_child_1 != -1) underlying_shortcuts += incoming.m_child_1;
             if (outgoing.m_child_1 != -1) underlying_shortcuts += outgoing.m_child_1;
@@ -1511,15 +1875,16 @@ int Graph::microsoftHeuristic(std::vector<bool>& contracted, int node, int cur_l
         }
 
         // reset contraction data
-        for (int& num : m_contr_data.m_reset_visited) m_contr_data.m_visited[num] = false;
-        for (int& num : m_contr_data.m_reset_distances) m_contr_data.m_distances[num] = std::numeric_limits<int>::max();
-        m_contr_data.m_reset_visited.clear();
-        m_contr_data.m_reset_distances.clear();
+        for (int& num : m_contr_data[0].m_reset_visited) m_contr_data[0].m_visited[num] = false;
+        for (int& num : m_contr_data[0].m_reset_distances)
+            m_contr_data[0].m_distances[num] = std::numeric_limits<int>::max();
+        m_contr_data[0].m_reset_visited.clear();
+        m_contr_data[0].m_reset_distances.clear();
     }
 
     // reset contraction data
-    for (int& num : m_contr_data.m_reset_outgoing) m_contr_data.m_outgoing[num] = false;
-    m_contr_data.m_reset_outgoing.clear();
+    for (int& num : m_contr_data[0].m_reset_outgoing) m_contr_data[0].m_outgoing[num] = false;
+    m_contr_data[0].m_reset_outgoing.clear();
 
     if (max_neighbour_level > cur_level)
         max_neighbour_level = 0;
@@ -1528,96 +1893,94 @@ int Graph::microsoftHeuristic(std::vector<bool>& contracted, int node, int cur_l
 
     return static_cast<int>(0.001 * static_cast<double>(max_cost)) +
            2 * (num_added_shortcuts - (num_incomming + num_outgoing)) +
-           1 * m_contr_data.m_num_contracted_neighbours[node] + 5 * max_neighbour_level + underlying_shortcuts;
+           1 * m_contr_data[0].m_num_contracted_neighbours[node] + 5 * max_neighbour_level + underlying_shortcuts;
 }
 
-void Graph::contractNode(std::vector<bool>& contracted, int contracted_node) {
+void Graph::contractNode(std::vector<bool>& contracted, int contracted_node, int thread_num) {
     // mark outgoing nodes
     // will be used for pruning in contractionDijkstra
     int num_outgoing = 0;
     int max_distance_out = -1;
+
     for (auto& outgoing : m_graph[contracted_node]) {
         if (contracted[outgoing.m_target]) continue;
         if (outgoing.m_cost > max_distance_out) max_distance_out = outgoing.m_cost;
 
-        ++m_contr_data.m_num_contracted_neighbours[outgoing.m_target];
+        ++m_contr_data[thread_num].m_num_contracted_neighbours[outgoing.m_target];
 
         ++num_outgoing;
-        m_contr_data.m_reset_outgoing.push_back(outgoing.m_target);
-        m_contr_data.m_outgoing[outgoing.m_target] = true;
+        m_contr_data[thread_num].m_reset_outgoing.push_back(outgoing.m_target);
+        m_contr_data[thread_num].m_outgoing[outgoing.m_target] = true;
     }
-
-    std::vector<std::pair<int, Edge>> fwd_shortcuts;
-    std::vector<std::pair<int, Edge>> bwd_shortcuts;
 
     for (auto& incoming : m_reverse_graph[contracted_node]) {
         if (contracted[incoming.m_target]) continue;
         int max_distance = incoming.m_cost + max_distance_out;
 
-        ++m_contr_data.m_num_contracted_neighbours[incoming.m_target];
+        ++m_contr_data[thread_num].m_num_contracted_neighbours[incoming.m_target];
 
-        contractionDijkstra(incoming.m_target, contracted_node, contracted, num_outgoing, max_distance);
+        contractionDijkstra(incoming.m_target, contracted_node, contracted, num_outgoing, max_distance, thread_num);
 
         for (auto& outgoing : m_graph[contracted_node]) {
-            if (m_contr_data.m_visited[outgoing.m_target]) continue;
+            if (m_contr_data[thread_num].m_visited[outgoing.m_target]) continue;
             if (contracted[outgoing.m_target]) continue;
-            if (m_contr_data.m_distances[outgoing.m_target] != incoming.m_cost + outgoing.m_cost) continue;
+            if (m_contr_data[thread_num].m_distances[outgoing.m_target] != incoming.m_cost + outgoing.m_cost) continue;
             if (outgoing.m_target == incoming.m_target) continue;
 
-            m_contr_data.m_visited[outgoing.m_target] = true;
-            m_contr_data.m_reset_visited.push_back(outgoing.m_target);
+            m_contr_data[thread_num].m_visited[outgoing.m_target] = true;
+            m_contr_data[thread_num].m_reset_visited.push_back(outgoing.m_target);
 
+            // add shortcut
             int underlying_arcs = 0;
             if (incoming.m_child_1 != -1) underlying_arcs += incoming.m_child_1;
             if (outgoing.m_child_1 != -1) underlying_arcs += outgoing.m_child_1;
 
-            // add shortcut
             Edge fwd_shortcut(outgoing.m_target, incoming.m_cost + outgoing.m_cost, underlying_arcs, -1);
-            fwd_shortcuts.push_back(std::make_pair(incoming.m_target, fwd_shortcut));
+            m_contr_data[thread_num].m_shortcuts_fwd.push_back(std::make_pair(incoming.m_target, fwd_shortcut));
             Edge bwd_shortcut(incoming.m_target, incoming.m_cost + outgoing.m_cost, underlying_arcs, -1);
-            bwd_shortcuts.push_back(std::make_pair(outgoing.m_target, bwd_shortcut));
+            m_contr_data[thread_num].m_shortcuts_bwd.push_back(std::make_pair(outgoing.m_target, bwd_shortcut));
         }
 
         // reset contraction data
-        for (int& num : m_contr_data.m_reset_visited) m_contr_data.m_visited[num] = false;
-        for (int& num : m_contr_data.m_reset_distances) m_contr_data.m_distances[num] = std::numeric_limits<int>::max();
-        m_contr_data.m_reset_visited.clear();
-        m_contr_data.m_reset_distances.clear();
+        for (int& num : m_contr_data[thread_num].m_reset_visited) m_contr_data[thread_num].m_visited[num] = false;
+        for (int& num : m_contr_data[thread_num].m_reset_distances)
+            m_contr_data[thread_num].m_distances[num] = std::numeric_limits<int>::max();
+        m_contr_data[thread_num].m_reset_visited.clear();
+        m_contr_data[thread_num].m_reset_distances.clear();
     }
 
     // reset contraction data
-    for (int& num : m_contr_data.m_reset_outgoing) m_contr_data.m_outgoing[num] = false;
-    m_contr_data.m_reset_outgoing.clear();
-
-    for (auto& fwd_shortcut : fwd_shortcuts) m_graph[fwd_shortcut.first].push_back(fwd_shortcut.second);
-    for (auto& bwd_shortcut : bwd_shortcuts) m_reverse_graph[bwd_shortcut.first].push_back(bwd_shortcut.second);
+    for (int& num : m_contr_data[thread_num].m_reset_outgoing) m_contr_data[thread_num].m_outgoing[num] = false;
+    m_contr_data[thread_num].m_reset_outgoing.clear();
 }
 
 void Graph::contractionDijkstra(int start, int contracted_node, std::vector<bool>& contracted, int num_outgoing,
-                                int max_distance) {
+                                int max_distance, int thread_num) {
     std::priority_queue<std::pair<int, int>, std::vector<std::pair<int, int>>, std::greater<std::pair<int, int>>> pq;
 
     int num_visited_outgoing = 0;
-    m_contr_data.m_distances[start] = 0;
-    m_contr_data.m_reset_distances.push_back(start);
+    m_contr_data[thread_num].m_distances[start] = 0;
+    m_contr_data[thread_num].m_reset_distances.push_back(start);
     pq.push(std::make_pair(0, start));
 
     while (!pq.empty()) {
         std::pair<int, int> cur_node = pq.top();
         pq.pop();
 
-        if (m_contr_data.m_distances[cur_node.second] != cur_node.first) continue;
+        if (m_contr_data[thread_num].m_distances[cur_node.second] != cur_node.first) continue;
 
-        if (m_contr_data.m_outgoing[cur_node.second]) ++num_visited_outgoing;
+        if (m_contr_data[thread_num].m_outgoing[cur_node.second]) ++num_visited_outgoing;
         if (cur_node.first > max_distance || num_visited_outgoing == num_outgoing) break;
 
         for (Edge& e : m_graph[cur_node.second]) {
             if (contracted[e.m_target]) continue;
-            if (m_contr_data.m_distances[e.m_target] > m_contr_data.m_distances[cur_node.second] + e.m_cost) {
-                if (m_contr_data.m_distances[e.m_target] == std::numeric_limits<int>::max())
-                    m_contr_data.m_reset_distances.push_back(e.m_target);
-                m_contr_data.m_distances[e.m_target] = m_contr_data.m_distances[cur_node.second] + e.m_cost;
-                pq.push(std::make_pair(m_contr_data.m_distances[e.m_target], e.m_target));
+            if (m_contr_data[thread_num].m_distances[e.m_target] >
+                m_contr_data[thread_num].m_distances[cur_node.second] + e.m_cost) {
+                if (m_contr_data[thread_num].m_distances[e.m_target] == std::numeric_limits<int>::max())
+                    m_contr_data[thread_num].m_reset_distances.push_back(e.m_target);
+                m_contr_data[thread_num].m_distances[e.m_target] =
+                    m_contr_data[thread_num].m_distances[cur_node.second] + e.m_cost;
+                pq.push(std::make_pair(m_contr_data[thread_num].m_distances[e.m_target], e.m_target));
             }
         }
     }

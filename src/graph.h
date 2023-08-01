@@ -1,5 +1,6 @@
 #pragma once
 
+#include <omp.h>
 #include <stdint.h>
 
 #include <limits>
@@ -27,6 +28,8 @@ struct ContractionData {
     std::vector<int> m_distances;
     std::vector<int> m_reset_distances;
     std::vector<int> m_num_contracted_neighbours;
+    std::vector<std::pair<int, Edge>> m_shortcuts_fwd;
+    std::vector<std::pair<int, Edge>> m_shortcuts_bwd;
 
     ContractionData(int num_nodes)
         : m_outgoing(num_nodes, false),
@@ -91,9 +94,15 @@ enum Heuristic { IN_OUT = 0, EDGE_DIFFERENCE = 1, WEIGHTED_COST = 2, MICROSOFT =
 
 class Graph {
    public:
+    // constructor without independent sets (IS)
     Graph(const std::string& path, ReadMode read_mode, bool ch_available, bool prune_graph, Heuristic ch_heuristic,
           DistanceMode dist_mode = DistanceMode::TRAVEL_TIME);
-    Graph(std::vector<std::vector<Edge>> graph);  // TODO: Adjust constructors for normal mode and ch mode
+
+    // constructor with independent sets (IS)
+    Graph(const std::string& path, ReadMode read_mode, bool ch_available, bool prune_graph, int num_threads,
+          Heuristic ch_heuristic, DistanceMode dist_mode = DistanceMode::TRAVEL_TIME);
+
+    Graph() = default;
     ~Graph() = default;
 
     void readGraph(const std::string& path, ReadMode read_mode, DistanceMode dist_mode);
@@ -104,8 +113,8 @@ class Graph {
 
     static int dijkstraQuery(std::vector<std::vector<Edge>>& graph, int start, int end);
 
-    // Don't use this function with a graph based on contraction hierachies
-    // It will sometimes produce wrong results depending on the hierachiy
+    // Don't use this function with a graph based on contraction hierarchies
+    // It will sometimes produce wrong results depending on the hierarchy
     // instead use contractionHierachyQuery function
     void bidirectionalDijkstraQuery(QueryData& data);
 
@@ -113,7 +122,9 @@ class Graph {
 
     void contractionHierachyQuery(QueryData& data);
 
-    void createHubLabels(int threshold = std::numeric_limits<int>::max());
+    void createHubLabelsWithoutIS(int threshold = std::numeric_limits<int>::max());
+
+    void createHubLabelsWithIS(int threshold = std::numeric_limits<int>::max());
 
     void hubLabelQuery(QueryData& data);
 
@@ -135,6 +146,8 @@ class Graph {
 
     std::vector<std::vector<Edge>>& getGraph() { return m_graph; }
 
+    void setNumThreads(int num_of_threads) { m_num_threads = num_of_threads; }
+
     void clearHubLabel() {
         std::vector<uint64_t>().swap(m_fwd_indices);
         std::vector<uint64_t>().swap(m_bwd_indices);
@@ -143,12 +156,16 @@ class Graph {
     }
 
    private:
-    bool m_ch_available;  // ch = Contraction Hierarchy
+    bool m_ch_available;  // ch/CH = Contraction Hierarchy
     int m_num_nodes;
+    bool m_is;          // determines whether IS are used
+    int m_num_threads;  // sets threads when using independent sets (IS)
+
     std::vector<std::vector<Edge>> m_graph;
     std::vector<std::vector<Edge>> m_reverse_graph;
     std::vector<int> m_node_level;
-    ContractionData m_contr_data;
+
+    std::vector<ContractionData> m_contr_data;  // only used to share state when calculating CH
 
     std::vector<int> m_level_indices_sorted;
     std::vector<int> m_node_indices;
@@ -156,8 +173,6 @@ class Graph {
     std::vector<uint64_t> m_bwd_indices;
     std::vector<std::pair<int, int>> m_fwd_hub_labels;
     std::vector<std::pair<int, int>> m_bwd_hub_labels;
-    // std::vector<std::vector<std::pair<int, int>>> m_fwd_hub_labels;
-    // std::vector<std::vector<std::pair<int, int>>> m_bwd_hub_labels;
 
     void createReverseGraphCH();
 
@@ -165,7 +180,9 @@ class Graph {
 
     int greatCircleDistance(double lat_1, double lon_1, double lat_2, double lon_2);
 
-    void createCH(Heuristic heuristic);
+    void createCHwithoutIS(Heuristic heuristic);
+
+    void createCHwithIS(Heuristic heuristic);
 
     int inOutProductHeuristic(std::vector<bool>& contracted, int node);
 
@@ -180,10 +197,10 @@ class Graph {
 
     int microsoftHeuristic(std::vector<bool>& contracted, int node, int cur_level);
 
-    void contractNode(std::vector<bool>& contracted, int contracted_node);
+    void contractNode(std::vector<bool>& contracted, int contracted_node, int thread_num);
 
     void contractionDijkstra(int start, int contracted_node, std::vector<bool>& contracted, int num_outgoing,
-                             int max_distance);
+                             int max_distance, int thread_num);
 
     void lowerBoundDijkstra(LowerBoundData& lb_data);
 
