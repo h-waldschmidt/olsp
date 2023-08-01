@@ -25,7 +25,15 @@ int getMemoryUsage() {  // Note: this value is in KB!
     return result;
 }
 
-double convertTravelTimeToMeters(std::string graph_path, olsp::Heuristic heuristic, bool is) {
+/**
+ * @brief Returns conversion rate. (How many meters convert to one travel time (1/100 s))
+ *
+ * @param graph_path specifies location of path
+ * @param heuristic  specifies the used heuristic
+ * @param is         specifies whether IS are used or not
+ * @return conversion rate
+ */
+double getConversionRate(std::string graph_path, olsp::Heuristic heuristic, bool is) {
     olsp::Graph travel_time_graph;
     olsp::Graph meter_graph;
 
@@ -40,9 +48,6 @@ double convertTravelTimeToMeters(std::string graph_path, olsp::Heuristic heurist
         meter_graph =
             olsp::Graph(graph_path, olsp::ReadMode::NORMAL, true, true, heuristic, olsp::DistanceMode::DISTANCE_METERS);
     }
-
-    // travel_time_graph.createHubLabels();
-    // meter_graph.createHubLabels();
 
     double avg_dist_meter = 0.0;
     double avg_dist_travel_time = 0.0;
@@ -67,18 +72,14 @@ double convertTravelTimeToMeters(std::string graph_path, olsp::Heuristic heurist
         data.m_start = start;
         data.m_end = end;
         travel_time_graph.contractionHierachyQuery(data);
-        // data.m_distance = olsp::Graph::dijkstraQuery(travel_time_graph.getGraph(), start, end);
         if (data.m_distance == std::numeric_limits<int>::max()) continue;
-        // std::cout << "Distances Travel Time: " << data.m_distance << std::endl;
 
         avg_dist_travel_time += data.m_distance;
 
-        // data.m_distance = olsp::Graph::dijkstraQuery(meter_graph.getGraph(), start, end);
         meter_graph.contractionHierachyQuery(data);
         if (data.m_distance == std::numeric_limits<int>::max()) continue;
 
         avg_dist_meter += data.m_distance;
-        // std::cout << "Distances Meters: " << data.m_distance << std::endl;
     }
 
     avg_dist_meter /= 100000.0;
@@ -88,19 +89,7 @@ double convertTravelTimeToMeters(std::string graph_path, olsp::Heuristic heurist
     return avg_dist_meter / avg_dist_travel_time;
 }
 
-void test() {
-    // double stgt_conversion =
-    //     convertTravelTimeToMeters("/home/helmut/Documents/BachelorArbeit/bachelorarbeit/data/stgtregbz.fmi");
-    // double german_conversion =
-    //    convertTravelTimeToMeters("/home/helmut/Documents/BachelorArbeit/bachelorarbeit/data/bw.fmi");
-
-    // std::cout << "Stuttgart Conversion Rate: " << stgt_conversion << "\n";
-    // std::cout << "Germany Conversion Rate: " << german_conversion << "\n";
-
-    // olsp::Graph g("/Users/helmut/Documents/BachelorArbeit/bachelorarbeit/data/stgtregbz_ch.fmi",
-    // olsp::ReadMode::CONTRACTION_HIERACHIES);
-
-    // don't prune graph when using advanced hub label creation
+void example() {
     olsp::Graph g("data/stgtregbz.fmi", olsp::ReadMode::NORMAL, true, false, olsp::Heuristic::IN_OUT,
                   olsp::DistanceMode::TRAVEL_TIME);
 
@@ -143,17 +132,25 @@ void test() {
     auto path_cover = g.createShortestPathCover(threshold);
     std::cout << "Path Cover Size: " << path_cover.size() << std::endl;
 
-    auto new_path_cover = g.reducePathCover(path_cover, threshold);
-    std::cout << "New Path Cover Size: " << new_path_cover.size() << std::endl;
-
-    auto lower_bound = g.verifyShortestPathCover(new_path_cover, threshold);
+    auto lower_bound = g.verifyShortestPathCover(path_cover, threshold);
     std::cout << "Path Cover Valid?: " << lower_bound;
 }
 
+/**
+ * @brief Run one single benchmark permutation.
+ * Creates CH, Hub-Labeling, ESC Set and Lower-Bound for that set.
+ *
+ * @param graph_path specifies location of path
+ * @param metric     specifies whether travel time or distance in meters is used
+ * @param heuristic  specifies the used heuristic
+ * @param is         specifies whether IS are used or not
+ * @param threshold  specifies the range of the electric vehicle
+ * @param conversion specifies the conversion rate from meters to travel time
+ */
 void singleBenchmark(std::string graph_path, olsp::DistanceMode metric, olsp::Heuristic heuristic, bool is,
                      int threshold, double conversion = 0) {
     if (metric == olsp::DistanceMode::TRAVEL_TIME && conversion == 0) {
-        double new_conversion = convertTravelTimeToMeters(graph_path, heuristic, is);
+        double new_conversion = getConversionRate(graph_path, heuristic, is);
         std::cout << "Conversion: " << new_conversion << std::endl;
         threshold = static_cast<int>(static_cast<double>(threshold) / new_conversion);
     } else if (metric == olsp::DistanceMode::TRAVEL_TIME && conversion != 0) {
@@ -171,7 +168,7 @@ void singleBenchmark(std::string graph_path, olsp::DistanceMode metric, olsp::He
 
     std::cout << "Graph Memory usage in kb: " << getMemoryUsage() << std::endl;
 
-    // g.createHubLabels(threshold);
+    // g.createHubLabels(threshold); // pass threshold to use pruned hub-labeling
     if (is)
         g.createHubLabelsWithIS();
     else
@@ -183,7 +180,6 @@ void singleBenchmark(std::string graph_path, olsp::DistanceMode metric, olsp::He
     int max_hub_label = g.maxLabelSize();
     std::cout << "Max Label Size: " << max_hub_label << std::endl;
 
-    /*
     std::vector<int> path_cover = g.createShortestPathCover(threshold);
     std::cout << "Path cover size: " << path_cover.size() << std::endl;
 
@@ -191,13 +187,17 @@ void singleBenchmark(std::string graph_path, olsp::DistanceMode metric, olsp::He
 
     std::vector<int> lower_bound = g.lowerBound(path_cover, threshold);
     std::cout << "Lower bound size: " << lower_bound.size() << std::endl;
-    */
 }
 
+/**
+ * @brief Runs various permutations for all three graphs
+ *
+ * @param is specifies whether IS are used or not
+ */
 void benchmark(bool is = false) {
-    std::string stuttgart_path = "/home/helmut/Documents/BachelorArbeit/bachelorarbeit/data/stgtregbz.fmi";
-    std::string bw_path = "/home/helmut/Documents/BachelorArbeit/bachelorarbeit/data/bw.fmi";
-    std::string germany_path = "/home/helmut/Documents/BachelorArbeit/bachelorarbeit/data/germany.fmi";
+    std::string stuttgart_path = "data/stgtregbz.fmi";
+    std::string bw_path = "data/bw.fmi";
+    std::string germany_path = "data/germany.fmi";
 
     int small_threshold = 40000;
     int big_threshold = 125000;
@@ -337,42 +337,10 @@ void benchmark(bool is = false) {
     }
 }
 
-void germanyBenchmark(bool is = false) {
-    std::string germany_path = "data/germany.fmi";
-
-    int big_threshold = 125000;
-
-    // Germnay weighted Cost
-    {
-        std::cout << "Germany Graph with weighted cost and TravelTime." << std::endl;
-        singleBenchmark(germany_path, olsp::DistanceMode::TRAVEL_TIME, olsp::Heuristic::WEIGHTED_COST, is,
-                        big_threshold);
-    }
-
-    {
-        std::cout << "Germany Graph with weighted cost and Meter-Metric." << std::endl;
-        singleBenchmark(germany_path, olsp::DistanceMode::DISTANCE_METERS, olsp::Heuristic::WEIGHTED_COST, is,
-                        big_threshold);
-    }
-
-    // Germany microsoft
-    {
-        std::cout << "Germany Graph with Microsoft and TravelTime." << std::endl;
-        singleBenchmark(germany_path, olsp::DistanceMode::TRAVEL_TIME, olsp::Heuristic::MICROSOFT, is, big_threshold);
-    }
-
-    /*
-    {
-        std::cout << "Germany Graph with Microsoft and Meter-Metric." << std::endl;
-        singleBenchmark(germany_path, olsp::DistanceMode::DISTANCE_METERS, olsp::Heuristic::MICROSOFT, big_threshold);
-    }
-    */
-}
-
 int main(int argc, char* argv[]) {
-    // benchmark();
-    // germanyBenchmark();
-    benchmark(true);
+    // example(); // call example benchmark
+    benchmark();  // tests permutations without IS
+    // benchmark(true); // tests permutations wit IS
 
     return 0;
 }
