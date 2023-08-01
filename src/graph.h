@@ -347,11 +347,6 @@ class Graph {
 
     int weightedCostHeuristic(std::vector<bool>& contracted, int node);
 
-    int altWeightedCostHeuristic(std::vector<bool>& contracted, int node, std::vector<int>& longest_path_fwd,
-                                 std::vector<int>& longest_path_bwd);
-
-    int deletedNeighboursHeuristic(std::vector<bool>& contracted, int node, std::vector<int>& num_deleted_neighbours);
-
     int microsoftHeuristic(std::vector<bool>& contracted, int node, int cur_level);
 
     void contractNode(std::vector<bool>& contracted, int contracted_node, int thread_num);
