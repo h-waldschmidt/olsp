@@ -28,7 +28,7 @@ int getMemoryUsage() {  // Note: this value is in KB!
 /**
  * @brief Returns conversion rate. (How many meters convert to one travel time (1/100 s))
  *
- * @param graph_path specifies location of path
+ * @param graph_path specifies location of graph
  * @param heuristic  specifies the used heuristic
  * @param is         specifies whether IS are used or not
  * @return conversion rate
@@ -129,7 +129,7 @@ void example() {
     std::cout << "Num Labels with weight between: " << threshold / 2 << " and " << threshold << " : "
               << g.numHubLabelsInRange(threshold / 2, threshold) << std::endl;
 
-    auto path_cover = g.createShortestPathCover(threshold);
+    auto path_cover = g.createESC(threshold);
     std::cout << "Path Cover Size: " << path_cover.size() << std::endl;
 
     auto lower_bound = g.verifyShortestPathCover(path_cover, threshold);
@@ -140,7 +140,7 @@ void example() {
  * @brief Run one single benchmark permutation.
  * Creates CH, Hub-Labeling, ESC Set and Lower-Bound for that set.
  *
- * @param graph_path specifies location of path
+ * @param graph_path specifies location of graph
  * @param metric     specifies whether travel time or distance in meters is used
  * @param heuristic  specifies the used heuristic
  * @param is         specifies whether IS are used or not
@@ -180,7 +180,7 @@ void singleBenchmark(std::string graph_path, olsp::DistanceMode metric, olsp::He
     int max_hub_label = g.maxLabelSize();
     std::cout << "Max Label Size: " << max_hub_label << std::endl;
 
-    std::vector<int> path_cover = g.createShortestPathCover(threshold);
+    std::vector<int> path_cover = g.createESC(threshold);
     std::cout << "Path cover size: " << path_cover.size() << std::endl;
 
     g.clearHubLabel();

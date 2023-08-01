@@ -866,7 +866,7 @@ int Graph::numHubLabelsInRange(int lower, int upper) {
     return count;
 }
 
-std::vector<int> Graph::createShortestPathCover(int threshold) {
+std::vector<int> Graph::createESC(int threshold) {
     std::cout << "Started creating Path Cover." << std::endl;
     auto begin = std::chrono::high_resolution_clock::now();
 
@@ -894,7 +894,7 @@ std::vector<int> Graph::createShortestPathCover(int threshold) {
     return path_cover_vec;
 }
 
-bool Graph::verifyShortestPathCover(std::vector<int>& shortest_path_cover, int threshold) {
+bool Graph::verifyShortestPathCover(std::vector<int>& esc_set, int threshold) {
     // TODO:
     std::cout << "Started verifiying path cover." << std::endl;
     auto begin = std::chrono::high_resolution_clock::now();
@@ -902,7 +902,7 @@ bool Graph::verifyShortestPathCover(std::vector<int>& shortest_path_cover, int t
     LowerBoundData lb_data(m_num_nodes);
     lb_data.m_threshold = threshold;
 
-    for (int& node : shortest_path_cover) lb_data.m_marked[node] = true;
+    for (int& node : esc_set) lb_data.m_marked[node] = true;
 
     for (int i = 0; i < m_num_nodes; ++i) {
         lb_data.m_start_node = i;
@@ -926,7 +926,7 @@ bool Graph::verifyShortestPathCover(std::vector<int>& shortest_path_cover, int t
     return true;
 }
 
-std::vector<int> Graph::reducePathCover(std::vector<int>& path_cover, int threshold) {
+std::vector<int> Graph::reduceESC(std::vector<int>& path_cover, int threshold) {
     // TODO:
     std::cout << "Started reducing path cover." << std::endl;
     auto begin = std::chrono::high_resolution_clock::now();
@@ -1062,35 +1062,35 @@ std::vector<int> intersection(std::vector<int> v1, std::vector<int> v2) {
     return v3;
 }
 
-std::vector<int> Graph::lowerBound(std::vector<int>& shortest_path_cover, int threshold) {
+std::vector<int> Graph::lowerBound(std::vector<int>& esc_set, int threshold) {
     std::cout << "Started calculating Lower Bound." << std::endl;
     auto begin = std::chrono::high_resolution_clock::now();
 
     LowerBoundData lb_data(m_num_nodes);
     lb_data.m_threshold = threshold;
 
-    // get random node out of shortest_path_cover
+    // get random node out of esc_set
     std::random_device dev;
     std::mt19937 rng(dev());
-    std::uniform_int_distribution<std::mt19937::result_type> dist(0, static_cast<int>(shortest_path_cover.size()) - 1);
+    std::uniform_int_distribution<std::mt19937::result_type> dist(0, static_cast<int>(esc_set.size()) - 1);
 
     int spc_nodes_covered = 0;  // spc = shortest path cover
-    std::vector<bool> spc_node_covered(shortest_path_cover.size(), false);
+    std::vector<bool> spc_node_covered(esc_set.size(), false);
     std::vector<int> lower_bound;
 
     std::vector<bool> node_in_spc(m_num_nodes, false);
-    for (int& node : shortest_path_cover) node_in_spc[node] = true;
+    for (int& node : esc_set) node_in_spc[node] = true;
 
     // std::vector<std::vector<int>> shortest_paths_backwards;
 
     // std::vector<int> shortest_path;
     std::vector<int> end_nodes;
 
-    while (spc_nodes_covered != shortest_path_cover.size()) {
+    while (spc_nodes_covered != esc_set.size()) {
         int cur_spc_node = dist(rng);
         while (spc_node_covered[cur_spc_node]) cur_spc_node = dist(rng);
         spc_node_covered[cur_spc_node] = true;
-        lb_data.m_start_node = shortest_path_cover[cur_spc_node];
+        lb_data.m_start_node = esc_set[cur_spc_node];
 
         if (lb_data.m_marked[lb_data.m_start_node]) {
             spc_nodes_covered++;
