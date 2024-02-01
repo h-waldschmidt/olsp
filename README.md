@@ -1,5 +1,5 @@
 # Optimal Loading Station Placement (OLSP)
-This code is a part of my bachelor thesis [[1]](#1).
+This code is part of my bachelor thesis [[1]](#1).
 ## How to run?
 
 1. Get Stuttgart, Baden-Württemberg and Deutschland graph from [here](https://fmi.uni-stuttgart.de/alg/research/stuff/)
