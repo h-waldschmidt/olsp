@@ -1,4 +1,4 @@
-# Optimal Loading Station Placement (OLSP)
+# Optimized Loading Station Placement (OLSP)
 This code is part of my bachelor thesis [[1]](#1).
 ## How to run?
 
